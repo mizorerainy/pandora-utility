@@ -1,0 +1,211 @@
+# Pandora Unity Utility Package Documentation
+
+Welcome to the comprehensive documentation for the Pandora Unity Utility Package! This package provides advanced networking solutions and development tools to enhance your Unity game development workflow.
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Core Features](#core-features)
+- [Documentation Sections](#documentation-sections)
+- [API Reference](#api-reference)
+- [Examples & Tutorials](#examples--tutorials)
+- [Support & Community](#support--community)
+
+---
+
+## Quick Start
+
+New to Pandora? Start here:
+
+1. **[Installation Guide](installation.md)** - Install via Package Manager or Git URL
+2. **[Simple Connection Tutorial](tutorials/simple-connection.md)** - Your first network connection
+3. **[Data Serialization Tutorial](tutorials/data-serialization.md)** - Send and receive data
+
+---
+
+## Core Features
+
+### AetherLink Network System
+Advanced networking utilities designed for quick 1-to-1 connections in Local Area Network environments.
+
+**Key Capabilities:**
+- Simple LAN connection establishment (Master/Slave architecture)
+- Automatic network discovery and connection
+- Built-in and custom data serialization
+- Async stream API with UniTask integration
+- Managed event handlers with automatic cleanup
+- Connection resilience and error recovery
+- Performance optimizations for real-time applications
+
+### Editor Tools
+Development utilities to enhance your Unity workflow and productivity.
+
+**Includes:**
+- Build utilities (Unity 6.0+)
+- Development helpers
+- AetherLink inspector tools
+- Network debugging utilities
+
+---
+
+## Documentation Sections
+
+### Getting Started
+- **[Installation](installation.md)** - Package installation and setup
+- **[System Requirements](installation.md#system-requirements)** - Unity versions and platform compatibility
+- **[First Steps](installation.md#first-steps)** - Basic configuration
+
+### Tutorials
+- **[Simple Connection](tutorials/simple-connection.md)** - Basic master-slave connection setup
+- **[Data Serialization](tutorials/data-serialization.md)** - Built-in types and custom serialization
+- **[Advanced Scenarios](tutorials/advanced-scenarios.md)** - Async streams, managed handlers, complex patterns
+
+### API Documentation
+- **[AetherLink API](api/aetherlink-api.md)** - Core networking class reference
+- **[Settings API](api/settings-api.md)** - Configuration and settings
+- **[Serialization API](api/serialization-api.md)** - Data handling interfaces
+
+---
+
+## API Reference
+
+### Core Namespaces
+- **`PandoraUtility.Network.AetherLink`** - Main networking functionality
+- **`PandoraUtility.Network.Interfaces`** - Serialization and event interfaces
+- **`PandoraUtility.Editor`** - Editor-only utilities
+
+### Key Classes
+- **AetherLink** - Primary networking interface and singleton
+- **Settings** - Network configuration and connection parameters
+- **PacketResponse** - Network packet handling
+- **IAetherSerializable** - Custom data serialization interface
+
+**[Complete API Reference](api/)**
+
+---
+
+## Examples & Tutorials
+
+### Beginner Level
+- [Simple Connection Setup](examples/simple-connection.md) - Master/slave connection basics
+- [Basic Data Exchange](examples/data-serialization.md) - Sending built-in types
+
+### Intermediate Level
+- [Custom Data Types](examples/data-serialization.md#custom-type-serialization) - Implementing IAetherSerializable
+- [Event Handling](examples/simple-connection.md#handling-events) - Connection and data events
+
+### Advanced Level
+- [Async Stream API](tutorials/advanced-scenarios.md#async-stream-api) - Reactive event handling with UniTask
+- [Managed Handlers](tutorials/advanced-scenarios.md#managed-event-handlers) - Automatic cleanup and error handling
+- [Performance Optimization](tutorials/advanced-scenarios.md#performance-optimization) - High-throughput scenarios
+- [Error Recovery](tutorials/advanced-scenarios.md#error-recovery-and-resilience) - Building robust applications
+
+---
+
+## Sample Projects
+
+Explore practical implementations in the **Samples~** directory:
+
+- **Basic Connection Sample** - Simple master-slave setup
+- **Data Serialization Sample** - Custom type serialization examples
+- **Real-time Sync Sample** - Game state synchronization
+- **Advanced Features Sample** - Async patterns and managed handlers
+
+Import samples via Package Manager: **Window > Package Manager > Pandora Utility > Samples**
+
+---
+
+## Development & Contributing
+
+### For Contributors
+- **[Contributing Guidelines](contributing.md)** - How to contribute to the project
+- **[Development Setup](contributing.md#development-setup)** - Local development environment
+- **[Code Standards](contributing.md#code-standards)** - Coding conventions and practices
+
+### Architecture Overview
+- **Master/Slave Connection Model** - Simple 1-to-1 LAN networking
+- **Event-Driven Design** - UnityEvent and async stream patterns
+- **Modular Serialization** - Built-in types + custom interface
+- **Unity Integration** - Inspector support and lifecycle management
+
+---
+
+## System Requirements
+
+### Unity Compatibility
+- **Unity Version**: 2021.3 LTS or later
+- **Build Utility**: Unity 6.0+ (for advanced build features)
+- **Platforms**: All Unity-supported platforms
+- **Rendering**: Compatible with Built-in, URP, and HDRP
+
+### Optional Dependencies
+- **UniTask**: Required for async stream API features
+- **Newtonsoft.Json**: Included (3.0.2) for internal serialization
+
+### Network Requirements
+- **Local Area Network**: Required for device discovery
+- **UDP Communication**: Used for connection establishment
+- **TCP Communication**: Used for reliable data transfer
+
+---
+
+## Support & Community
+
+### Getting Help
+- **[Troubleshooting Guide](tutorials/troubleshooting.md)** - Common issues and solutions
+- **[FAQ](tutorials/troubleshooting.md#frequently-asked-questions)** - Frequently asked questions
+- **GitHub Issues** - Report bugs and request features
+
+### Documentation Status
+- **Installation & Setup** - Complete
+- **Basic Usage** - Complete  
+- **Data Serialization** - Complete
+- **Advanced Features** - Complete
+- **API Reference** - Complete
+- **Sample Projects** - Complete
+
+---
+
+## Performance & Limitations
+
+### Optimal Use Cases
+- **Local Area Network**: Designed for LAN environments
+- **1-to-1 Connections**: Master-slave architecture
+- **Real-time Applications**: Games, interactive experiences
+- **Rapid Prototyping**: Quick networking setup
+
+### Current Limitations
+- **Single Connection**: One master, one slave at a time
+- **LAN Only**: No WAN/internet routing support
+- **Platform Specific**: May have platform-specific networking constraints
+
+---
+
+## Version Information
+
+- **Current Version**: 1.0.0
+- **Unity Compatibility**: 2021.3+
+- **Last Updated**: 2025
+- **License**: See LICENSE file
+
+---
+
+## Additional Resources
+
+- **[Changelog](../CHANGELOG.md)** - Version history and updates
+- **[License](../LICENSE)** - Usage terms and conditions
+- **[GitHub Repository](https://github.com/your-username/pandora-unity-package)** - Source code and releases
+
+---
+
+## What's Next?
+
+1. **New to networking?** Start with the [Installation Guide](installation.md)
+2. **Ready to connect?** Try the [Simple Connection Tutorial](tutorials/simple-connection.md)
+3. **Need custom data?** Learn [Data Serialization](tutorials/data-serialization.md)
+4. **Building something complex?** Explore [Advanced Scenarios](tutorials/advanced-scenarios.md)
+5. **Want examples?** Check out the [Sample Projects](#sample-projects)
+
+---
+
+*Documentation for Pandora Unity Utility Package - Making Unity networking simple and powerful*

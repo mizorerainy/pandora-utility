@@ -1,0 +1,14 @@
+# ============ #
+# OS Generated #
+# ============ #
+.DS_Store
+Thumbs.db
+
+# ======================= #
+# IDE Generated (JetBrains) #
+# ======================= #
+/.idea/
+/Folder.DotSettings.user
+/Folder.DotSettings.user.meta
+/Folder.DotSettings
+/Folder.DotSettings.meta
