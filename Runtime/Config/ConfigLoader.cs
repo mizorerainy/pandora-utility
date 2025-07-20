@@ -537,6 +537,27 @@ namespace MizoreRainy.Pandora.ConfigUtility
             }
         }
 
+        /// <summary>
+        /// Resets all configuration settings to their default values as defined in the code
+        /// and then saves these defaults to the config.txt file, overwriting its current content.
+        /// </summary>
+        /// <returns>A task representing the asynchronous reset and save operation.</returns>
+        public static async Task ResetToDefaultsAsync()
+        {
+            // Ensure the loader is initialized so we know about all the settings.
+            await InitializeAsync();
+
+            Debug.Log("[ConfigLoader] Resetting all settings to their default values...");
+            foreach (var setting in Settings)
+            {
+                setting.SetToDefault();
+            }
+
+            // Now, save these default values back to the file.
+            await SaveAsync();
+            Debug.Log("[ConfigLoader] All settings have been reset to defaults and saved to config.txt.");
+        }
+
         #endregion
 
         #region File Watching
