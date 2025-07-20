@@ -53,7 +53,7 @@ This guide will help you install, configure, and start using the Pandora Unity U
 
 3. **Enter Repository URL**
 ```
-https://github.com/mizorerainy/pandora-unity-package.git
+https://github.com/mizorerainy/pandora-utility.git#release/1.0.0
 ```
 
 4. **Install Package**
@@ -75,7 +75,7 @@ https://github.com/mizorerainy/pandora-unity-package.git
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/mizorerainy/pandora-unity-package.git
+git clone https://github.com/mizorerainy/pandora-utility.git#release/1.0.0
 ```
 
 2. **Add to Packages Folder**

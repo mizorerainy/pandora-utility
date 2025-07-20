@@ -1,10 +1,11 @@
 # Pandora Unity Utility Package
 
-A comprehensive Unity utility package providing networking solutions and other helpful tools for Unity game development.
+A comprehensive Unity utility package providing networking solutions, configuration management, and other helpful tools for Unity game development.
 
 ## Features
 
 - **AetherLink Network System**: Advanced networking utilities for Unity projects for quick 1–1 connection in Local Area Network.
+- **Configuration System**: Type-safe, file-based configuration management with live-reloading
 - **Editor Tools**: Development tools to enhance your Unity workflow
 
 ## Requirements
@@ -21,7 +22,7 @@ A comprehensive Unity utility package providing networking solutions and other h
 3. Select **Add package from git URL...**
 4. Enter the following URL:
    ```
-   https://github.com/mizorerainy/pandora-unity-package.git
+https://github.com/mizorerainy/pandora-unity-package.git#release/1.0.0
    ```
 5. Click **Add**
 
@@ -34,15 +35,110 @@ A comprehensive Unity utility package providing networking solutions and other h
 
 ## Package Structure
 ```
+
 ├── Runtime/
-│   └── Network/
-│       └── AetherLink/          # Advanced networking system
+│   ├── Network/
+│   │   └── AetherLink/          # Advanced networking system
+│   └── Config/                  # Configuration management system
 ├── Editor/                      # Editor-only utilities
 ├── Documentation~/              # Additional documentation (if available)
 ├── package.json                 # Package manifest
 ├── CHANGELOG.md                 # Version history
 └── LICENSE                      # License information
 ```
+## Configuration System
+
+The Configuration System provides a robust, type-safe way to manage application settings with live-reloading capabilities.
+
+### Getting Started
+
+#### 1. Enable the Configuration System
+
+The Configuration System is **disabled by default** to avoid conflicts with projects that don't need it.
+
+**To enable it:**
+1. Go to **Window → Pandora → Settings**
+2. Check **"Enable Auto-Initialization"**
+3. This will automatically add the `CONFIG_LOADER_AUTO_INIT` scripting define symbol
+
+#### 2. Define Configuration Settings
+```
+csharp
+public static class GameSettings
+{
+[Config("player_name", "Anonymous", "The player's display name")]
+public static readonly ConfigEntry<string> PlayerName;
+
+    [Config("max_fps", 60, "Maximum frame rate limit")]
+    public static readonly ConfigEntry<int> MaxFPS;
+    
+    [Config("enable_debug", false, "Enable debug mode")]
+    public static readonly ConfigEntry<bool> DebugMode;
+}
+```
+#### 3. Access Configuration Values
+```
+csharp
+void Start()
+{
+string playerName = GameSettings.PlayerName.Value;
+int maxFps = GameSettings.MaxFPS.Value;
+bool debugEnabled = GameSettings.DebugMode.Value;
+}
+```
+#### 4. Configuration File
+
+Once enabled, the system automatically creates a `config.txt` file in your project root with your settings.
+
+### Manual Initialization (Advanced)
+
+If you prefer full control over when the configuration system initializes:
+
+1. Keep **"Enable Auto-Initialization"** unchecked in Pandora Settings
+2. Call the initialization manually in your code:
+```
+csharp
+// Async initialization (recommended)
+await ConfigLoader.InitializeAsync();
+
+// Or synchronous initialization
+ConfigLoader.Initialize();
+```
+### Advanced Features
+
+- **Live-Reloading**: Changes to `config.txt` are automatically applied in Unity Editor and standalone builds
+- **Type Safety**: Strong typing with compile-time checking
+- **Custom Parsers**: Support for complex types via `IConfigValueParser`
+- **Initialization Modes**:
+  - **Manual** (Default): Call `ConfigLoader.InitializeAsync()` manually
+  - **Auto-Sync**: Enable via Pandora Settings for automatic synchronous initialization
+  - **Auto-Async**: Enable auto-init + add `CONFIG_LOAD_ASYNC` define for faster async startup
+
+### Configuration File Format
+
+The system generates a human-readable configuration file:
+```
+
+# Application Configuration File
+# Last saved: 7/21/2025 2:30:45 PM
+
+#==================================================
+# :: GameSettings Settings
+#==================================================
+# The player's display name
+player_name=Anonymous
+# Maximum frame rate limit
+max_fps=60
+# Enable debug mode
+enable_debug=False
+```
+### Editor Integration
+
+- **Pandora Settings**: Configure the config system via **Window → Pandora → Settings**
+- **Menu Integration**: Access config file via **Pandora → Open Config File**
+- **Auto-Discovery**: Automatically finds and registers all configuration settings
+- **Error Handling**: Clear error messages for unsupported types and duplicate keys
+
 ## Documentation
 
 - Check the `CHANGELOG.md` for version history and updates
@@ -60,6 +156,15 @@ The AetherLink system provides advanced networking capabilities for Unity projec
 - Packet-based data transmission with headers
 - Built-in serialization for common Unity types
 - Network statistics and connection monitoring
+
+### Configuration System API
+
+Key classes and interfaces:
+
+- `ConfigLoader`: Core configuration management
+- `ConfigEntry<T>`: Type-safe configuration values
+- `ConfigAttribute`: Metadata for configuration settings
+- `IConfigValueParser`: Custom type conversion interface
 
 *Complete API documentation available in `Documentation~/api-reference.md`*
 
@@ -98,4 +203,4 @@ This project is licensed under the terms specified in the `LICENSE` file.
 
 ---
 
-*Made with ❤️ for the Unity community*# pandora-utility
+*Made with ❤️ for the Unity community*

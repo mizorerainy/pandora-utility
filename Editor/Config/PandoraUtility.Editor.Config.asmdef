@@ -1,0 +1,18 @@
+{
+  "name": "MizoreRainy.Pandora.Editor.ConfigUtility",
+  "rootNamespace": "MizoreRainy.Pandora.ConfigUtility.Editor",
+  "references": [
+    "MizoreRainy.Pandora.ConfigUtility"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

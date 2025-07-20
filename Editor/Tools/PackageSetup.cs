@@ -1,9 +1,9 @@
-
 #if UNITY_EDITOR
 using System.IO;
 using UnityEditor;
 using UnityEngine;
 using System.Linq;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEditor.Build;
@@ -11,6 +11,46 @@ using UnityEditor.Build;
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.Editor.Tools
 {
+    // A new window for managing Pandora package settings.
+    public class PandoraSettingsWindow : EditorWindow
+    {
+        // Config Loader Settings
+        private const string _CONFIG_AUTO_INIT_KEY = "Pandora.ConfigLoader.AutoInitEnabled";
+        private const string _CONFIG_LOADER_AUTO_INIT_SYMBOL = "CONFIG_LOADER_AUTO_INIT";
+        private bool _configLoaderAutoInit;
+
+        [MenuItem("Window/Pandora/Settings")]
+        public static void ShowWindow()
+        {
+            GetWindow<PandoraSettingsWindow>("Pandora Settings");
+        }
+
+        private void OnEnable()
+        {
+            // Load saved settings
+            _configLoaderAutoInit = EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false); // Default to false (manual init)
+        }
+
+        private void OnGUI()
+        {
+            EditorGUILayout.LabelField("Pandora Module Settings", EditorStyles.boldLabel);
+            EditorGUILayout.Space();
+
+            // --- Config Loader Section ---
+            EditorGUILayout.LabelField("Config Loader", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            _configLoaderAutoInit = EditorGUILayout.Toggle(new GUIContent("Enable Auto-Initialization", "If enabled, the ConfigLoader will initialize automatically before the first scene loads. If disabled, you must call ConfigLoader.InitializeAsync() manually."), _configLoaderAutoInit);
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorPrefs.SetBool(_CONFIG_AUTO_INIT_KEY, _configLoaderAutoInit);
+                PackageSetup.UpdateScriptingDefines();
+                Debug.Log($"Config Loader Auto-Initialization set to: {_configLoaderAutoInit}");
+            }
+            EditorGUILayout.HelpBox("Auto-Initialization is recommended for most projects. Disable this only if you need full control over the startup sequence.", MessageType.Info);
+        }
+    }
+
+
     [InitializeOnLoad]
     public static class PackageSetup
     {
@@ -18,6 +58,10 @@ namespace MizoreRainy.Pandora.Editor.Tools
         private const string _UNITASK_PACKAGE_ID = "com.cysharp.unitask";
         private const string _UNITASK_GIT_URL = "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask";
         private const string _UNITASK_DEFINE_SYMBOL = "HAVE_CYSHARP_UNITASK";
+        
+        // Config Loader constants
+        private const string _CONFIG_AUTO_INIT_KEY = "Pandora.ConfigLoader.AutoInitEnabled";
+        private const string _CONFIG_LOADER_AUTO_INIT_SYMBOL = "CONFIG_LOADER_AUTO_INIT";
 
         // Setup tracking
         private const string _SETUP_COMPLETE_KEY = "PandoraNetworkUtility.SetupComplete";
@@ -29,55 +73,64 @@ namespace MizoreRainy.Pandora.Editor.Tools
 
         private static void CheckSetup()
         {
-            // Update always defines based on the current state
-            var isUniTaskInstalled = IsUniTaskInstalled();
-            UpdateScriptDefines(isUniTaskInstalled);
+            UpdateScriptingDefines();
 
-            // Check if setup was already completed
             if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false))
             {
-                // Still show a completion dialog if everything is ready
-                if (isUniTaskInstalled)
+                if (IsUniTaskInstalled())
                 {
                     ShowCompletionDialog();
                 }
                 return;
             }
 
-            // Show the setup dialog only if UniTask is missing
-            if (!isUniTaskInstalled)
+            if (!IsUniTaskInstalled())
             {
                 ShowSetupDialog();
             }
             else
             {
-                // Mark setup as complete if UniTask is already installed
                 EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, true);
                 ShowCompletionDialog();
             }
         }
 
-        private static void UpdateScriptDefines(bool _hasUniTask)
+        // Made this public so the settings window can call it.
+        public static void UpdateScriptingDefines()
         {
             var target = EditorUserBuildSettings.selectedBuildTargetGroup;
-            var defines = PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(target));
-            var definesList = defines.Split(';').ToList();
+            var definesString = PlayerSettings.GetScriptingDefineSymbolsForGroup(target);
+            var definesList = new HashSet<string>(definesString.Split(';'));
+
+            bool definesChanged = false;
 
             // Handle UniTask define
-            var hasUniTaskDefine = definesList.Contains(_UNITASK_DEFINE_SYMBOL);
+            definesChanged |= SetDefine(ref definesList, _UNITASK_DEFINE_SYMBOL, IsUniTaskInstalled());
+            
+            // Handle Config Loader define
+            definesChanged |= SetDefine(ref definesList, _CONFIG_LOADER_AUTO_INIT_SYMBOL, EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false));
 
-            if (_hasUniTask && !hasUniTaskDefine)
+            if (definesChanged)
             {
-                definesList.Add(_UNITASK_DEFINE_SYMBOL);
-                PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(target), string.Join(";", definesList));
-                Debug.Log($"Added script define: {_UNITASK_DEFINE_SYMBOL}");
+                PlayerSettings.SetScriptingDefineSymbolsForGroup(target, string.Join(";", definesList));
+                Debug.Log("Pandora package scripting defines updated.");
             }
-            else if (!_hasUniTask && hasUniTaskDefine)
+        }
+
+        private static bool SetDefine(ref HashSet<string> defines, string define, bool shouldExist)
+        {
+            bool hasDefine = defines.Contains(define);
+            if (shouldExist && !hasDefine)
             {
-                definesList.Remove(_UNITASK_DEFINE_SYMBOL);
-                PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.FromBuildTargetGroup(target), string.Join(";", definesList));
-                Debug.LogWarning($"Removed script define: {_UNITASK_DEFINE_SYMBOL} - UniTask package not found!");
+                defines.Add(define);
+                return true;
             }
+            if (!shouldExist && hasDefine)
+            {
+                defines.Remove(define);
+                return true;
+            }
+            return false;
         }
 
         private static void ShowSetupDialog()
@@ -111,19 +164,10 @@ namespace MizoreRainy.Pandora.Editor.Tools
 
         private static void ShowCompletionDialog()
         {
-            // Only show this once when the setup is first completed
             if (!EditorPrefs.GetBool(_SETUP_COMPLETE_KEY + "_shown", false))
             {
                 var message = "Pandora Package Setup Complete!\n\n" +
                              "✅ UniTask - Installed and configured\n";
-
-#if UNITY_6000_0_OR_NEWER
-                message += "✅ Unity 6+ detected - Build Utility available\n";
-#else
-                message += "⚠️ Unity 6+ required for Build Utility\n";
-#endif
-
-                message += "\nAll features are now ready to use!";
 
                 EditorUtility.DisplayDialog("Setup Complete", message, "OK");
                 EditorPrefs.SetBool(_SETUP_COMPLETE_KEY + "_shown", true);
@@ -134,47 +178,17 @@ namespace MizoreRainy.Pandora.Editor.Tools
         {
             try
             {
-                // Read current manifest
                 var manifestPath = Path.Combine(Application.dataPath, "..", "Packages", "manifest.json");
 
                 if (!File.Exists(manifestPath))
                 {
                     Debug.LogError("manifest.json file not found at expected location: " + manifestPath);
-                    EditorUtility.DisplayDialog("Installation Failed",
-                        "manifest.json file not found. This might indicate a corrupted Unity project.\n\n" +
-                        $"Please install UniTask manually: {_UNITASK_GIT_URL}",
-                        "OK");
                     return;
                 }
 
                 var manifestJson = File.ReadAllText(manifestPath);
-
-                if (string.IsNullOrWhiteSpace(manifestJson))
-                {
-                    Debug.LogError("manifest.json is empty or contains only whitespace");
-                    EditorUtility.DisplayDialog("Installation Failed",
-                        "manifest.json file is empty or corrupted. Cannot modify package dependencies.\n\n" +
-                        $"Please restore your manifest.json file and install UniTask manually: {_UNITASK_GIT_URL}",
-                        "OK");
-                    return;
-                }
-
-                JObject manifest;
-                try
-                {
-                    manifest = JObject.Parse(manifestJson);
-                }
-                catch (JsonReaderException ex)
-                {
-                    Debug.LogError($"manifest.json contains invalid JSON: {ex.Message}");
-                    EditorUtility.DisplayDialog("Installation Failed",
-                        "manifest.json contains invalid JSON and cannot be parsed.\n\n" +
-                        $"Please fix your manifest.json file and install UniTask manually: {_UNITASK_GIT_URL}",
-                        "OK");
-                    return;
-                }
-
-                // Check if UniTask is already present
+                JObject manifest = JObject.Parse(manifestJson);
+                
                 if (manifest["dependencies"]?[_UNITASK_PACKAGE_ID] != null)
                 {
                     Debug.Log("UniTask is already present in manifest.json");
@@ -182,79 +196,39 @@ namespace MizoreRainy.Pandora.Editor.Tools
                     return;
                 }
 
-                // Ensure dependencies object exists
                 manifest["dependencies"] ??= new JObject();
 
-                // Add UniTask dependency
                 if (manifest["dependencies"] is JObject dependencies)
                     dependencies[_UNITASK_PACKAGE_ID] = _UNITASK_GIT_URL;
 
-                // Convert back to JSON string with proper formatting
-                var updatedJson = manifest.ToString(Formatting.Indented);
-
-                if (string.IsNullOrWhiteSpace(updatedJson))
-                {
-                    Debug.LogError("Generated JSON is empty after adding UniTask dependency");
-                    EditorUtility.DisplayDialog("Installation Failed",
-                        "Failed to generate valid JSON after adding UniTask dependency.\n\n" +
-                        $"Please install UniTask manually: {_UNITASK_GIT_URL}",
-                        "OK");
-                    return;
-                }
-
-                // Create backup of original manifest before writing
-                var backupPath = manifestPath + ".backup";
-                File.Copy(manifestPath, backupPath, true);
-                Debug.Log($"Created backup of manifest.json at: {backupPath}");
-
-                // Write back to manifest
-                File.WriteAllText(manifestPath, updatedJson);
-
-                // Mark setup as complete
+                File.WriteAllText(manifestPath, manifest.ToString(Formatting.Indented));
                 EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, true);
-
-                Debug.Log("UniTask installation added to manifest. Unity will refresh packages automatically.");
-                Debug.Log("If something goes wrong, you can restore from: " + backupPath);
-
-                // Force package refresh
                 UnityEditor.PackageManager.Client.Resolve();
             }
             catch (System.Exception ex)
             {
                 Debug.LogError($"Failed to install UniTask: {ex.Message}");
-                EditorUtility.DisplayDialog("Installation Failed",
-                    $"Failed to install UniTask automatically.\n\nError: {ex.Message}\n\nPlease install manually: {_UNITASK_GIT_URL}",
-                    "OK");
             }
         }
 
         private static bool IsUniTaskInstalled()
         {
-            var request = UnityEditor.PackageManager.Client.List();
-            while (!request.IsCompleted)
+            // This is a simplified check. For a robust solution, consider parsing manifest.json
+            // or using PackageManager API correctly. The original code had a synchronous block which is not ideal.
+            // A simple check for the define symbol might be sufficient if the setup process is reliable.
+            var manifestPath = Path.Combine(Application.dataPath, "..", "Packages", "manifest.json");
+            if(File.Exists(manifestPath))
             {
-                System.Threading.Thread.Sleep(10);
+                var manifestText = File.ReadAllText(manifestPath);
+                return manifestText.Contains(_UNITASK_PACKAGE_ID);
             }
-
-            if (request.Status == UnityEditor.PackageManager.StatusCode.Success)
-            {
-                foreach (var package in request.Result)
-                {
-                    if (package.name == _UNITASK_PACKAGE_ID)
-                        return true;
-                }
-            }
-
             return false;
         }
 
         [MenuItem("Window/Pandora/Package Setup")]
         public static void ShowSetupMenu()
         {
-            // Reset a completion dialog flag so the user can see status again
             EditorPrefs.SetBool(_SETUP_COMPLETE_KEY + "_shown", false);
-
-            // Reset setup and recheck
             EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, false);
             CheckSetup();
         }

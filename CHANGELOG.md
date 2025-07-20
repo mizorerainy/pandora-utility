@@ -1,3 +1,4 @@
+
 # Changelog
 
 All notable changes to the Pandora Unity Utility Package will be documented in this file.
@@ -8,57 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial package structure
-- Assembly definition files for better compilation management
 
-### Changed
-- Updated package documentation
+#### Configuration System
+- **NEW**: Complete configuration management system with type-safe access
+- **ConfigLoader**: Core configuration engine with synchronous and asynchronous initialization
+- **ConfigEntry<T>**: Generic, type-safe configuration value containers
+- **ConfigAttribute**: Declarative configuration metadata system
+- **IConfigValueParser**: Interface for custom type conversion support
+- **Automatic Discovery**: Reflection-based automatic detection of configuration settings
+- **Live-Reloading**: Real-time configuration updates via FileSystemWatcher (Editor & Standalone)
+- **Thread-Safe Operations**: Concurrent access protection with proper locking mechanisms
+- **Editor Integration**: "Pandora → Open Config File" menu item for easy access
 
-### Fixed
-- Minor bug fixes and improvements
+#### Configuration Features
+- **Automatic Initialization**: Configurable via Scripting Define Symbols:
+  - Default: Synchronous initialization before a scene is loaded
+  - `CONFIG_LOADER_MANUAL_INIT`: Disable automatic initialization
+  - `CONFIG_LOAD_ASYNC`: Enable asynchronous initialization for faster startup
+- **Human-Readable Config Files**: Generated `config.txt` with comments and grouping
+- **Error Handling**: Comprehensive error reporting and fallback to default values
+- **Type Support**: Built-in support for primitives, strings, enums, and extensible custom types
 
-## [1.0.0] - 2025-XX-XX
+#### AetherLink Network System
+- Advanced networking utilities for Unity projects
+- Master-Slave connection architecture
+- Automatic network discovery on LAN
+- Packet-based data transmission with headers
+- Built-in serialization for common Unity types
+- Network statistics and connection monitoring
 
-### Added
-- **AetherLink Network System**: Advanced networking utilities for Unity projects
-- Local Area Network (LAN) quick 1-to-1 connection support
-- Network connection management utilities
-- Data serialization tools
-- Client-server communication framework
-- Editor tools for development workflow enhancement
-- Basic Unity Package Manager support
-- MIT License
+#### Editor Tools
+- Development tools to enhance Unity workflow
+- Build utilities (Unity 6.0+ required)
 
-### Features
-- **Runtime Components**:
-  - AetherLink networking system
-  - Network utilities and helpers
+### Technical Improvements
+- **Async/Await Support**: Full .NET Task-based asynchronous operations
+- **Memory Efficient**: Minimal allocations and optimized reflection usage
+- **Cross-Platform**: Compatible with all Unity-supported platforms
+- **Dependency-Free**: No external dependencies, uses built-in .NET libraries
 
-- **Editor Tools**:
-  - Development utilities
-  - Build tools and helpers
-
-### Requirements
-- Unity 2021.3 or later
-- Unity 6.0+ for Build Utility features
-
-### Known Issues
-- Documentation is still in development
-- Some API references need completion
+### Documentation
+- Comprehensive inline code documentation
+- README.md updated with configuration system examples
+- API reference documentation
+- Usage examples and best practices
 
 ---
 
-## Release Notes Format
+## Development Notes
 
-### Types of Changes
-- `Added` for new features
-- `Changed` for changes in existing functionality
-- `Deprecated` for soon-to-be removed features
-- `Removed` for now removed features
-- `Fixed` for any bug fixes
-- `Security` in case of vulnerabilities
-
-### Version Format
-- Major version for incompatible API changes
-- Minor version for backwards-compatible functionality additions
-- Patch version for backwards-compatible bug fixes
+### Configuration System Usage
