@@ -11,10 +11,14 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+
+// This attribute grants the specified editor assembly access to this assembly's internal members.
+[assembly: InternalsVisibleTo("MizoreRainy.Pandora.Editor.ConfigUtility")]
 
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.ConfigUtility
@@ -98,6 +102,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// </summary>
         private static SynchronizationContext _MainThreadContext;
 
+        /// <summary>
+        /// A flag to prevent re-entrant calls to the file-changed event handler, which can cause infinite loops.
+        /// </summary>
+        private static volatile bool _IsReloading;
+
         #endregion
 
         #region Initialization
@@ -172,7 +181,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 {
                     _IsInitializing = false;
                 }
-                Debug.LogError($"[ConfigLoader] Synchronous initialization failed: {e.Message}");
+                if (!(e is InvalidOperationException))
+                {
+                    Debug.LogError($"[ConfigLoader] Synchronous initialization failed: {e.Message}");
+                }
                 throw;
             }
         }
@@ -235,7 +247,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
                     _IsInitializing = false;
                     _InitializationTask = null;
                 }
-                Debug.LogError($"[ConfigLoader] Asynchronous initialization failed: {e.Message}");
+                if (!(e is InvalidOperationException))
+                {
+                    Debug.LogError($"[ConfigLoader] Asynchronous initialization failed: {e.Message}");
+                }
                 throw;
             }
         }
@@ -331,7 +346,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// </summary>
         private static void LoadFromFileSync()
         {
-            string path = GetConfigPath();
+            var path = GetConfigPath();
             if (!File.Exists(path))
             {
                 Debug.Log("[ConfigLoader] Config file not found. Creating a new one with default values.");
@@ -339,7 +354,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 return;
             }
 
-            Dictionary<string, string> fileValues = new Dictionary<string, string>();
+            var fileValues = new Dictionary<string, string>();
             try
             {
                 string[] lines;
@@ -353,11 +368,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
                     if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
                         continue;
 
-                    int equalsIndex = line.IndexOf('=');
+                    var equalsIndex = line.IndexOf('=');
                     if (equalsIndex > 0)
                     {
-                        string key = line.Substring(0, equalsIndex).Trim();
-                        string value = line.Substring(equalsIndex + 1);
+                        var key = line.Substring(0, equalsIndex).Trim();
+                        var value = line.Substring(equalsIndex + 1);
                         fileValues[key] = value;
                     }
                 }
@@ -369,7 +384,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
             foreach (var setting in Settings)
             {
-                if (fileValues.TryGetValue(setting.Key, out string rawValue))
+                if (fileValues.TryGetValue(setting.Key, out var rawValue))
                 {
                     setting.SetValueFromString(rawValue);
                 }
@@ -392,7 +407,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// </returns>
         public static async Task LoadFromFileAsync()
         {
-            string path = GetConfigPath();
+            var path = GetConfigPath();
             if (!File.Exists(path))
             {
                 Debug.Log("[ConfigLoader] Config file not found. Creating a new one with default values.");
@@ -400,7 +415,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 return;
             }
 
-            Dictionary<string, string> fileValues = new Dictionary<string, string>();
+            var fileValues = new Dictionary<string, string>();
             try
             {
                 string[] lines;
@@ -414,11 +429,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
                     if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
                         continue;
 
-                    int equalsIndex = line.IndexOf('=');
+                    var equalsIndex = line.IndexOf('=');
                     if (equalsIndex > 0)
                     {
-                        string key = line.Substring(0, equalsIndex).Trim();
-                        string value = line.Substring(equalsIndex + 1);
+                        var key = line.Substring(0, equalsIndex).Trim();
+                        var value = line.Substring(equalsIndex + 1);
                         fileValues[key] = value;
                     }
                 }
@@ -430,7 +445,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
             foreach (var setting in Settings)
             {
-                if (fileValues.TryGetValue(setting.Key, out string rawValue))
+                if (fileValues.TryGetValue(setting.Key, out var rawValue))
                 {
                     setting.SetValueFromString(rawValue);
                 }
@@ -449,33 +464,34 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// </summary>
         private static void SaveSync()
         {
-            string path = GetConfigPath();
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("# Application Configuration File");
-            sb.AppendLine($"# Last saved: {DateTime.Now}");
-
-            var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
-
-            foreach (var group in groupedSettings)
-            {
-                sb.AppendLine();
-                sb.AppendLine($"#==================================================");
-                sb.AppendLine($"# :: {group.Key} Settings");
-                sb.AppendLine($"#==================================================");
-
-                foreach (var setting in group.OrderBy(_s => _s.Key))
-                {
-                    if (!string.IsNullOrEmpty(setting.Description))
-                    {
-                        sb.AppendLine($"# {setting.Description}");
-                    }
-                    sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
-                }
-            }
-
+            StopWatching(); // Pause watcher to prevent infinite loop
             try
             {
-                byte[] encodedText = Encoding.UTF8.GetBytes(sb.ToString());
+                var path = GetConfigPath();
+                var sb = new StringBuilder();
+                sb.AppendLine("# Application Configuration File");
+                sb.AppendLine($"# Last saved: {DateTime.Now}");
+
+                var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+
+                foreach (var group in groupedSettings)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"#==================================================");
+                    sb.AppendLine($"# :: {group.Key} Settings");
+                    sb.AppendLine($"#==================================================");
+
+                    foreach (var setting in group.OrderBy(_s => _s.Key))
+                    {
+                        if (!string.IsNullOrEmpty(setting.Description))
+                        {
+                            sb.AppendLine($"# {setting.Description}");
+                        }
+                        sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
+                    }
+                }
+
+                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
                 lock (FileLock)
                 {
                     File.WriteAllBytes(path, encodedText);
@@ -484,6 +500,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
             catch (Exception e)
             {
                 Debug.LogError($"[ConfigLoader] Failed to save config file! Error: {e.Message}");
+            }
+            finally
+            {
+                StartWatching(); // Resume watcher
             }
         }
 
@@ -496,33 +516,34 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// </returns>
         public static async Task SaveAsync()
         {
-            string path = GetConfigPath();
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("# Application Configuration File");
-            sb.AppendLine($"# Last saved: {DateTime.Now}");
-
-            var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
-
-            foreach (var group in groupedSettings)
-            {
-                sb.AppendLine();
-                sb.AppendLine($"#==================================================");
-                sb.AppendLine($"# :: {group.Key} Settings");
-                sb.AppendLine($"#==================================================");
-
-                foreach (var setting in group.OrderBy(_s => _s.Key))
-                {
-                    if (!string.IsNullOrEmpty(setting.Description))
-                    {
-                        sb.AppendLine($"# {setting.Description}");
-                    }
-                    sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
-                }
-            }
-
+            StopWatching(); // Pause watcher to prevent infinite loop
             try
             {
-                byte[] encodedText = Encoding.UTF8.GetBytes(sb.ToString());
+                var path = GetConfigPath();
+                var sb = new StringBuilder();
+                sb.AppendLine("# Application Configuration File");
+                sb.AppendLine($"# Last saved: {DateTime.Now}");
+
+                var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+
+                foreach (var group in groupedSettings)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"#==================================================");
+                    sb.AppendLine($"# :: {group.Key} Settings");
+                    sb.AppendLine($"#==================================================");
+
+                    foreach (var setting in group.OrderBy(_s => _s.Key))
+                    {
+                        if (!string.IsNullOrEmpty(setting.Description))
+                        {
+                            sb.AppendLine($"# {setting.Description}");
+                        }
+                        sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
+                    }
+                }
+
+                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
                 await Task.Run(() =>
                 {
                     lock (FileLock)
@@ -534,6 +555,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
             catch (Exception e)
             {
                 Debug.LogError($"[ConfigLoader] Failed to save config file! Error: {e.Message}");
+            }
+            finally
+            {
+                StartWatching(); // Resume watcher
             }
         }
 
@@ -574,7 +599,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
             try
             {
-                string path = GetConfigPath();
+                var path = GetConfigPath();
                 _Watcher = new FileSystemWatcher(Path.GetDirectoryName(path)!, Path.GetFileName(path));
                 _Watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size;
                 _Watcher.Changed += OnConfigFileChanged;
@@ -624,12 +649,20 @@ namespace MizoreRainy.Pandora.ConfigUtility
         private static async void OnConfigFileChanged(object _sender, FileSystemEventArgs _e)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
-            // This event can fire on a background thread. We need to switch to the main thread
-            // to safely interact with Unity's systems and our static data.
+            if (_IsReloading) return;
+            _IsReloading = true;
+
             _MainThreadContext?.Post(async _ =>
             {
-                Debug.Log("[ConfigLoader] File change detected. Reloading settings...");
-                await LoadFromFileAsync();
+                try
+                {
+                    Debug.Log("[ConfigLoader] File change detected. Reloading settings...");
+                    await LoadFromFileAsync();
+                }
+                finally
+                {
+                    _IsReloading = false;
+                }
             }, null);
         }
 
@@ -688,13 +721,33 @@ namespace MizoreRainy.Pandora.ConfigUtility
                             throw new Exception($"[ConfigLoader] Duplicate config key '{attribute.Key}' found on {_type.Name}.{field.Name}. Keys must be unique.");
                         }
 
-                        var entry = (IConfigEntry)Activator.CreateInstance(field.FieldType, attribute, _groupName);
-                        field.SetValue(null, entry);
-                        Settings.Add(entry);
-
-                        if (GetParserForType(entry.ValueType) == null && !IsPrimitiveOrEnum(entry.ValueType))
+                        try
                         {
-                            Debug.LogError($"[ConfigLoader] Error: The type '{entry.ValueType.Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
+                            var entry = (IConfigEntry)Activator.CreateInstance(field.FieldType, attribute, _groupName);
+                            field.SetValue(null, entry);
+                            Settings.Add(entry);
+                        }
+                        catch (TargetInvocationException ex)
+                        {
+                            var innerEx = ex.InnerException;
+                            if (innerEx is ArgumentException { ParamName: "DefaultValue" } argEx)
+                            {
+                                var richMessage =
+                                    $"[ConfigLoader] Initialization failed due to an invalid default value in a [Config] attribute.\n\n" +
+                                    $"<b>Setting:</b>\t<color=white>{_groupName}.{field.Name}</color>\n" +
+                                    $"<b>Error:</b>\t\tThe provided default value has the wrong type.\n" +
+                                    $"<b>Details:</b>\t{innerEx.Message.Split(new[] { '\r', '\n' })[0]}\n" +
+                                    $"<b>Parameter:</b>\t<color=#FF6666>{argEx.ParamName}</color>";
+
+                                Debug.LogError(richMessage);
+                                throw new InvalidOperationException($"Initialization failed for setting '{_groupName}.{field.Name}'. Please check the console for details.", innerEx);
+                            }
+                            throw innerEx ?? ex;
+                        }
+
+                        if (GetParserForType(field.FieldType.GetGenericArguments()[0]) == null && !IsPrimitiveOrEnum(field.FieldType.GetGenericArguments()[0]))
+                        {
+                            Debug.LogError($"[ConfigLoader] Error: The type '{field.FieldType.GetGenericArguments()[0].Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
                                            $"To add support, create a class that implements IConfigValueParser and register it with ConfigLoader.RegisterParser().");
                         }
                     }

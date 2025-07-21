@@ -17,19 +17,20 @@ namespace MizoreRainy.Pandora.ConfigUtility
     #region Interfaces
 
     /// <summary>
-    /// Defines the contract for a configuration entry, outlining essential
-    /// properties and methods for managing configuration data within the system.
+    /// Defines the contract for a configuration entry, providing access to its key,
+    /// description, group name, and value type. It also specifies methods for
+    /// setting the value from a string, retrieving the value as a string, and
+    /// resetting the value to its default.
     /// </summary>
     public interface IConfigEntry
     {
         /// <summary>
-        /// Gets the unique identifier for the configuration entry used to associate
-        /// this setting with its stored value.
+        /// Gets the unique key that identifies the configuration entry.
         /// </summary>
         string Key { get; }
 
         /// <summary>
-        /// Gets the description of the configuration entry.
+        /// Gets the description of the configuration entry, providing additional context or information.
         /// </summary>
         string Description { get; }
 
@@ -39,27 +40,24 @@ namespace MizoreRainy.Pandora.ConfigUtility
         string GroupName { get; }
 
         /// <summary>
-        /// Gets the data type of the value associated with the configuration entry.
+        /// Gets the type of the value stored in the configuration entry.
         /// </summary>
         Type ValueType { get; }
 
         /// <summary>
-        /// Sets the value of the configuration entry by parsing a string representation
-        /// of the desired value.
+        /// Sets the value of the configuration entry from a raw string.
         /// </summary>
-        /// <param name="_rawValue">
-        /// The string representation of the value to be assigned to the configuration entry.
-        /// </param>
+        /// <param name="_rawValue">The raw string value to be parsed and set.</param>
         void SetValueFromString(string _rawValue);
 
         /// <summary>
-        /// Retrieves the value of the configuration entry as a string representation.
+        /// Retrieves the value of the configuration entry as a string.
         /// </summary>
         /// <returns>The string representation of the configuration entry's value.</returns>
         string GetValueAsString();
 
         /// <summary>
-        /// Reverts the configuration entry's value to its defined default state.
+        /// Resets the configuration entry's value to its default.
         /// </summary>
         void SetToDefault();
     }
@@ -69,44 +67,31 @@ namespace MizoreRainy.Pandora.ConfigUtility
     #region ConfigEntry Implementation
 
     /// <summary>
-    /// Represents a single typed configuration entry, allowing reactive updates,
-    /// asynchronous initialization, and efficient management of configuration values.
+    /// Represents a single, typed configuration setting that is both awaitable and reactive.
+    /// This class manages the value of a configuration entry, its default value, and provides
+    /// mechanisms for awaiting its initialization and subscribing to value changes.
     /// </summary>
-    /// <typeparam name="T">The type of the configuration value.</typeparam>
+    /// <typeparam name="T">The type of the value held by the configuration entry.</typeparam>
     public class ConfigEntry<T> : IConfigEntry
     {
         #region Nested Types
 
         /// <summary>
-        /// Represents a subscription to a configuration change event, enabling
-        /// reactive handling of value updates and lifecycle management for event handlers.
+        /// Represents a subscription to a configuration entry's value change event.
+        /// This struct implements IDisposable to allow for easy unsubscribing,
+        /// preventing memory leaks.
         /// </summary>
         private readonly struct Subscription : IDisposable
         {
-            /// <summary>
-            /// Holds a reference to the owning instance of the <see cref="ConfigEntry{T}"/> that contains this subscription.
-            /// Ensures proper disposal of event subscriptions tied to the owning configuration entry.
-            /// </summary>
             private readonly ConfigEntry<T> _Owner;
-
-            /// <summary>
-            /// Represents the delegate that handles configuration value changes.
-            /// </summary>
             private readonly Action<T> _Handler;
 
-            /// <summary>
-            /// Manages the lifecycle of an event subscription for a configuration entry.
-            /// Ensures the event handler is properly detached to prevent memory leaks when disposed.
-            /// </summary>
             public Subscription(ConfigEntry<T> _owner, Action<T> _handler)
             {
                 _Owner = _owner;
                 _Handler = _handler;
             }
 
-            /// <summary>
-            /// Releases the resources held by this object and unregisters associated event handlers.
-            /// </summary>
             public void Dispose()
             {
                 _Owner.OnChangeEvent -= _Handler;
@@ -117,29 +102,9 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
         #region Fields
 
-        /// <summary>
-        /// Stores the current value of the configuration entry.
-        /// </summary>
         private T _Value;
-
-        /// <summary>
-        /// Stores the default value for the configuration entry. This value is used
-        /// during initialization, and when a reset to default is requested or when
-        /// parsing the provided value fails.
-        /// </summary>
         private readonly T _DefaultValue;
-
-        /// <summary>
-        /// A <see cref="TaskCompletionSource{T}"/> used to handle the completion of the initialization
-        /// process for the configuration entry's value. This allows consumers to await the loading
-        /// of the initial value from the configuration source.
-        /// </summary>
         private readonly TaskCompletionSource<T> _InitializationTcs = new TaskCompletionSource<T>();
-
-        /// <summary>
-        /// An event that is triggered when the configuration value changes.
-        /// Subscribed handlers receive the updated value as an argument.
-        /// </summary>
         private event Action<T> OnChangeEvent;
 
         #endregion
@@ -147,7 +112,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
         #region Properties
 
         /// <summary>
-        /// Gets the unique key associated with the configuration entry.
+        /// Gets the unique key for the configuration entry.
         /// </summary>
         public string Key { get; }
 
@@ -157,18 +122,18 @@ namespace MizoreRainy.Pandora.ConfigUtility
         public string Description { get; }
 
         /// <summary>
-        /// Gets the name of the group to which the configuration entry belongs.
+        /// Gets the group name for the configuration entry.
         /// </summary>
         public string GroupName { get; }
 
         /// <summary>
-        /// Gets the type of the value stored in the configuration entry.
+        /// Gets the type of the value for the configuration entry.
         /// </summary>
         public Type ValueType => typeof(T);
 
         /// <summary>
-        /// Gets or sets the current value of the configuration entry.
-        /// Triggers a change event and updates the initialization task upon modification.
+        /// Gets the current value of the configuration entry.
+        /// Setting a new value triggers the OnChangeEvent if the value has changed.
         /// </summary>
         public T Value
         {
@@ -178,7 +143,6 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 if (EqualityComparer<T>.Default.Equals(_Value, value)) return;
                 _Value = value;
                 OnChangeEvent?.Invoke(_Value);
-
                 if (!_InitializationTcs.Task.IsCompleted)
                 {
                     _InitializationTcs.TrySetResult(_Value);
@@ -191,16 +155,31 @@ namespace MizoreRainy.Pandora.ConfigUtility
         #region Constructor
 
         /// <summary>
-        /// Represents a single typed configuration entry, providing mechanisms for reactive updates,
-        /// asynchronous initialization, and value management in the context of a configuration system.
+        /// Initializes a new instance of the ConfigEntry class with the specified attribute and group name.
         /// </summary>
-        /// <typeparam name="T">The type of the configuration value managed by this entry.</typeparam>
+        /// <param name="_attribute">The ConfigAttribute containing metadata for the entry.</param>
+        /// <param name="_groupName">The name of the group to which this entry belongs.</param>
+        /// <exception cref="ArgumentException">Thrown if the default value in the attribute cannot be converted to type T.</exception>
         public ConfigEntry(ConfigAttribute _attribute, string _groupName)
         {
             Key = _attribute.Key;
             Description = _attribute.Description;
             GroupName = _groupName;
-            _DefaultValue = (T)Convert.ChangeType(_attribute.DefaultValue, typeof(T));
+
+            try
+            {
+                _DefaultValue = (T)Convert.ChangeType(_attribute.DefaultValue, typeof(T));
+            }
+            catch (Exception ex) when (ex is InvalidCastException || ex is FormatException)
+            {
+                // This provides a clear error if the default value in the attribute doesn't match type T.
+                throw new ArgumentException(
+                    $"The default value '{_attribute.DefaultValue}' (type: {_attribute.DefaultValue.GetType().Name}) " +
+                    $"for key '{_attribute.Key}' cannot be converted to the required type '{typeof(T).Name}'.",
+                    nameof(_attribute.DefaultValue),
+                    ex);
+            }
+
             _Value = _DefaultValue;
         }
 
@@ -209,17 +188,16 @@ namespace MizoreRainy.Pandora.ConfigUtility
         #region Public Methods
 
         /// <summary>
-        /// Allows awaiting this object until its value is loaded from the configuration file,
-        /// enabling asynchronous initialization of the configuration entry.
+        /// Gets an awaiter for the asynchronous initialization of this configuration entry.
         /// </summary>
-        /// <returns>A task awaiter, allowing consumers to await the completion of the initialization task.</returns>
+        /// <returns>A TaskAwaiter for the initialization task.</returns>
         public TaskAwaiter<T> GetAwaiter() => _InitializationTcs.Task.GetAwaiter();
 
         /// <summary>
-        /// Registers a handler to be invoked when the value of this configuration entry changes.
+        /// Subscribes a handler to the value change event of this configuration entry.
         /// </summary>
-        /// <param name="_handler">The action to execute when the configuration value changes.</param>
-        /// <returns>An IDisposable that, when disposed, unsubscribes the registered handler.</returns>
+        /// <param name="_handler">The action to be invoked when the value changes.</param>
+        /// <returns>An IDisposable that can be used to unsubscribe from the event.</returns>
         public IDisposable OnChange(Action<T> _handler)
         {
             OnChangeEvent += _handler;
@@ -227,15 +205,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
             {
                 _handler?.Invoke(Value);
             }
-
             return new Subscription(this, _handler);
         }
 
         /// <summary>
-        /// Sets the value of this configuration entry in memory.
-        /// You must call ConfigLoader.SaveAsync() to persist the value to storage.
+        /// Sets a new value for the configuration entry in memory.
         /// </summary>
-        /// <param name="_newValue">The new value to assign to this configuration entry.</param>
+        /// <param name="_newValue">The new value to be set.</param>
         public void SetValue(T _newValue)
         {
             Value = _newValue;
@@ -246,9 +222,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
         #region Interface Implementation
 
         /// <summary>
-        /// Sets the configuration value by parsing the provided string representation.
+        /// Sets the value of the entry from a raw string, using registered or default parsers.
         /// </summary>
-        /// <param name="_rawValue">The raw string value to parse and set as the configuration value.</param>
         void IConfigEntry.SetValueFromString(string _rawValue)
         {
             var parser = ConfigLoader.GetParserForType(typeof(T));
@@ -279,12 +254,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
         }
 
         /// <summary>
-        /// Retrieves the current value of the configuration entry as a string representation.
+        /// Gets the string representation of the entry's value.
         /// </summary>
-        /// <returns>
-        /// A string representation of the current configuration value. Returns an empty string
-        /// if the value is null or if no suitable parser is available.
-        /// </returns>
         string IConfigEntry.GetValueAsString()
         {
             var parser = ConfigLoader.GetParserForType(typeof(T));
@@ -296,7 +267,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
         }
 
         /// <summary>
-        /// Resets the value of this configuration entry to its predefined default value.
+        /// Resets the entry's value to its default.
         /// </summary>
         void IConfigEntry.SetToDefault()
         {
