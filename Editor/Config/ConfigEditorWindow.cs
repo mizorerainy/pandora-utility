@@ -9,8 +9,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using MizoreRainy.Pandora.ConfigUtility;
 using MizoreRainy.Pandora.ConfigUtility.Editor;
 using UnityEditor;
@@ -19,405 +21,403 @@ using UnityEngine;
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 {
-    /// <summary>
-    /// Represents an editor window for modifying and managing configuration settings in the Unity Editor.
-    /// </summary>
-    public class ConfigEditorWindow : EditorWindow
-    {
-        /// <summary>
-        /// Represents the display settings for an individual configuration entry within the ConfigEditorWindow.
-        /// </summary>
-        /// <remarks>
-        /// This class is used internally by the ConfigEditorWindow to manage and display the state and validation
-        /// of configuration entries. Each setting corresponds to a single configuration entry within the editor.
-        /// </remarks>
-        private class DisplaySetting
-        {
-            /// <summary>
-            /// Represents an instance of a configuration entry implementing the IConfigEntry interface.
-            /// Provides access to configuration metadata such as key, description, group name, and value type.
-            /// This variable is commonly used to interact with configuration settings within the editor,
-            /// allowing values to be displayed, parsed, and updated.
-            /// </summary>
-            public IConfigEntry Entry;
+	/// <summary>
+	///     Represents an editor window for modifying and managing configuration settings in the Unity Editor.
+	/// </summary>
+	public class ConfigEditorWindow : EditorWindow
+	{
+		/// <summary>
+		///     Represents the display settings for an individual configuration entry within the ConfigEditorWindow.
+		/// </summary>
+		/// <remarks>
+		///     This class is used internally by the ConfigEditorWindow to manage and display the state and validation
+		///     of configuration entries.
+		///     Each setting corresponds to a single configuration entry within the editor.
+		/// </remarks>
+		private class DisplaySetting
+		{
+			/// <summary>
+			///     Represents an instance of a configuration entry implementing the IConfigEntry interface.
+			///     Provides access to configuration metadata such as key, description, group name, and value type.
+			///     This variable is commonly used to interact with configuration settings within the editor,
+			///     allowing values to be displayed, parsed, and updated.
+			/// </summary>
+			public IConfigEntry Entry;
 
-            /// <summary>
-            /// Represents the current value of the configuration entry being displayed
-            /// in the editor. This value is dynamically determined and can vary based
-            /// on the configuration entry type.
-            /// </summary>
-            public object CurrentValue;
+			/// <summary>
+			///     Represents the current value of the configuration entry being displayed
+			///     in the editor.
+			///     This value is dynamically determined and can vary based
+			///     on the configuration entry type.
+			/// </summary>
+			public object CurrentValue;
 
-            /// <summary>
-            /// Stores the raw string value of a configuration field entered by the user.
-            /// Primarily used for validation and conversion to the expected data type for the configuration entry.
-            /// </summary>
-            public string RawValue; // Holds the text field's current string, used for validation
+			/// <summary>
+			///     Stores the raw string value of a configuration field entered by the user.
+			///     Primarily used for validation and conversion to the expected data type for the configuration entry.
+			/// </summary>
+			public string RawValue; // Holds the text field's current string, used for validation
 
-            /// <summary>
-            /// Indicates whether the current field value is valid based on the validation rules.
-            /// </summary>
-            public bool IsValid = true;
+			/// <summary>
+			///     Indicates whether the current field value is valid based on the validation rules.
+			/// </summary>
+			public bool IsValid = true;
 
-            /// <summary>
-            /// Stores the error message to be displayed when the corresponding configuration value is invalid.
-            /// Typically used for communicating validation issues in the editor interface.
-            /// </summary>
-            public string ErrorMessage = "";
-        }
+			/// <summary>
+			///     Stores the error message to be displayed when the corresponding configuration value is invalid.
+			///     Typically used for communicating validation issues in the editor interface.
+			/// </summary>
+			public string ErrorMessage = "";
+		}
 
-        /// <summary>
-        /// Holds a collection of configuration settings grouped by category names.
-        /// </summary>
-        /// <remarks>
-        /// The dictionary uses the group name as the key and a list of <c>DisplaySetting</c> objects as the value.
-        /// Each group corresponds to a category of settings stored in <c>ConfigLoader</c>.
-        /// The grouped structure aids in organizing and displaying configuration settings within the editor window.
-        /// </remarks>
-        private Dictionary<string, List<DisplaySetting>> _GroupedSettings;
+		/// <summary>
+		///     Holds a collection of configuration settings grouped by category names.
+		/// </summary>
+		/// <remarks>
+		///     The dictionary uses the group name as the key and a list of <c>DisplaySetting</c> objects as the value.
+		///     Each group corresponds to a category of settings stored in <c>ConfigLoader</c>.
+		///     The grouped structure aids in organizing and displaying configuration settings within the editor window.
+		/// </remarks>
+		private Dictionary<string, List<DisplaySetting>> _GroupedSettings;
 
-        /// <summary>
-        /// A dictionary used in the ConfigEditorWindow to track the foldout states of configuration groups.
-        /// Each key represents a group name, while the corresponding boolean value indicates whether the group's foldout is expanded (true) or collapsed (false).
-        /// </summary>
-        private readonly Dictionary<string, bool> _GroupFoldouts = new();
+		/// <summary>
+		///     A dictionary used in the ConfigEditorWindow to track the foldout states of configuration groups.
+		///     Each key represents a group name,
+		///     while the corresponding boolean value indicates whether the group's foldout is
+		///     expanded (true) or collapsed (false).
+		/// </summary>
+		private readonly Dictionary<string, bool> _GroupFoldouts = new();
 
-        /// <summary>
-        /// Stores the current scroll position of the ConfigEditorWindow.
-        /// Used to manage vertical scrolling within the GUI when displaying grouped configuration settings.
-        /// </summary>
-        private Vector2 _ScrollPosition;
+		/// <summary>
+		///     Stores the current scroll position of the ConfigEditorWindow.
+		///     Used to manage vertical scrolling within the GUI when displaying grouped configuration settings.
+		/// </summary>
+		private Vector2 _ScrollPosition;
 
-        /// <summary>
-        /// A private boolean field that indicates whether any field within the configuration editor window
-        /// is invalid based on the validation rules associated with the text fields.
-        /// </summary>
-        /// <remarks>
-        /// This field is used to determine if the "Save Changes" button within the ConfigEditorWindow
-        /// should be enabled or disabled. A value of <c>true</c> disables the button, while <c>false</c>
-        /// enables it. The validation state of all fields is updated by the <c>ValidateAllFields</c> method,
-        /// which checks the validity of each field within the grouped settings.
-        /// </remarks>
-        private bool _IsAnyFieldInvalid;
+		/// <summary>
+		///     A private boolean field that indicates whether any field within the configuration editor window
+		///     is invalid based on the validation rules associated with the text fields.
+		/// </summary>
+		/// <remarks>
+		///     This field is used to determine if the "Save Changes" button within the ConfigEditorWindow
+		///     should be enabled or disabled.
+		///     A value of <c>true</c> disables the button, while <c>false</c>
+		///     enables it.
+		///     The validation state of all fields is updated by the <c>ValidateAllFields</c> method,
+		///     which checks the validity of each field within the grouped settings.
+		/// </remarks>
+		private bool _IsAnyFieldInvalid;
 
-        /// <summary>
-        /// Displays the ConfigEditorWindow in the Unity Editor.
-        /// This method is associated with the "Pandora/Config/Edit Configuration" menu item
-        /// and opens the "Pandora Config Editor" window.
-        /// </summary>
-        [MenuItem("Pandora/Config/Edit Configuration")]
-        public static void ShowWindow()
-        {
-            GetWindow<ConfigEditorWindow>("Pandora Config Editor");
-        }
+		/// <summary>
+		///     Displays the ConfigEditorWindow in the Unity Editor.
+		///     This method is associated with the "Pandora/Config/Edit Configuration" menu item
+		///     and opens the "Pandora Config Editor" window.
+		/// </summary>
+		[MenuItem("Pandora/Config/Edit Configuration")]
+		public static void ShowWindow()
+		{
+			GetWindow<ConfigEditorWindow>("Pandora Config Editor");
+		}
 
-        /// <summary>
-        /// Called when the ConfigEditorWindow is enabled in the Unity Editor.
-        /// This method refreshes the configuration settings by populating the grouped settings
-        /// with their current values and initializing foldout states for groups. If the settings
-        /// cannot be retrieved, an error message is logged in the console.
-        /// </summary>
-        private void OnEnable()
-        {
-            RefreshSettings();
-        }
+		/// <summary>
+		///     Called when the ConfigEditorWindow is enabled in the Unity Editor.
+		///     This method refreshes the configuration settings by populating the grouped settings
+		///     with their current values and initializing foldout states for groups.
+		///     If the settings
+		///     cannot be retrieved, an error message is logged in the console.
+		/// </summary>
+		private void OnEnable()
+		{
+			RefreshSettings();
+		}
 
-        /// <summary>
-        /// Refreshes the configuration settings by reloading data from the configuration source and rebuilding the internal
-        /// structure used to display configurable entries in the editor window.
-        /// </summary>
-        /// <remarks>
-        /// This method ensures that the configuration settings are up to date by fetching the latest data from the
-        /// `ConfigLoader`. It categorizes the settings into groups, preparing them for display.
-        /// If an error occurs (e.g., failure to locate expected configuration fields), logs an error and initializes an empty settings structure.
-        /// Validation is also performed on all configuration fields after loading.
-        /// </remarks>
-        private void RefreshSettings()
-        {
-            ConfigLoader.EnsureInitialized();
-            var settingsField = typeof(ConfigLoader).GetField("Settings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            if (settingsField == null)
-            {
-                _GroupedSettings = new Dictionary<string, List<DisplaySetting>>();
-                Debug.LogError("[ConfigEditorWindow] Could not find 'Settings' field in ConfigLoader. Cannot display settings.");
-                return;
-            }
+		/// <summary>
+		///     Refreshes the configuration settings
+		///     by reloading data from the configuration source and rebuilding the internal
+		///     structure used to display configurable entries in the editor window.
+		/// </summary>
+		/// <remarks>
+		///     This method ensures that the configuration settings are up to date by fetching the latest data from the
+		///     `ConfigLoader`.
+		///     It categorizes the settings into groups, preparing them for display.
+		///     If an error occurs (e.g., failure to locate expected configuration fields),
+		///     logs an error and initializes an empty
+		///     settings structure.
+		///     Validation is also performed on all configuration fields after loading.
+		/// </remarks>
+		private void RefreshSettings()
+		{
+			ConfigLoader.EnsureInitialized();
+			var settingsField = typeof(ConfigLoader).GetField("Settings", BindingFlags.NonPublic | BindingFlags.Static);
+			if (settingsField == null)
+			{
+				_GroupedSettings = new Dictionary<string, List<DisplaySetting>>();
+				Debug.LogError(
+					"[ConfigEditorWindow] Could not find 'Settings' field in ConfigLoader. Cannot display settings.");
+				return;
+			}
 
-            var settings = (List<IConfigEntry>)settingsField.GetValue(null);
+			var settings = (List<IConfigEntry>)settingsField.GetValue(null);
 
-            _GroupedSettings = settings
-                .GroupBy(_s => _s.GroupName)
-                .OrderBy(_g => _g.Key)
-                .ToDictionary(
-                    _g => _g.Key,
-                    _g => _g.Select(_s =>
-                    {
-                        var currentValue = _s.GetType().GetProperty("Value")?.GetValue(_s);
-                        return new DisplaySetting
-                        {
-                            Entry = _s,
-                            CurrentValue = currentValue,
-                            RawValue = currentValue?.ToString() ?? ""
-                        };
-                    }).ToList()
-                );
+			_GroupedSettings = settings
+				.GroupBy(_s => _s.GroupName)
+				.OrderBy(_g => _g.Key)
+				.ToDictionary(
+					_g => _g.Key,
+					_g => _g.Select(_s =>
+					{
+						var currentValue = _s.GetType().GetProperty("Value")?.GetValue(_s);
+						return new DisplaySetting
+						{
+							Entry = _s,
+							CurrentValue = currentValue,
+							RawValue = currentValue?.ToString() ?? ""
+						};
+					}).ToList()
+				);
 
-            foreach (var groupKey in _GroupedSettings.Keys)
-            {
-                _GroupFoldouts.TryAdd(groupKey, true);
-            }
-            ValidateAllFields();
-        }
+			foreach (var groupKey in _GroupedSettings.Keys) _GroupFoldouts.TryAdd(groupKey, true);
+			ValidateAllFields();
+		}
 
-        /// <summary>
-        /// Renders and manages the GUI for the Config Editor Window in the Unity Editor.
-        /// </summary>
-        /// <remarks>
-        /// Unity automatically calls this method to draw the editor window's graphical user interface.
-        /// It interactively displays grouped configuration settings, allowing users to view and edit them.
-        /// Includes functionality for refreshing, saving, and resetting configurations to their default values.
-        /// </remarks>
-        private void OnGUI()
-        {
-            if (_GroupedSettings == null)
-            {
-                EditorGUILayout.HelpBox("Could not load settings. Please check the console for errors.", MessageType.Error);
-                if (GUILayout.Button("Retry")) RefreshSettings();
-                return;
-            }
+		/// <summary>
+		///     Renders and manages the GUI for the Config Editor Window in the Unity Editor.
+		/// </summary>
+		/// <remarks>
+		///     Unity automatically calls this method to draw the editor window's graphical user interface.
+		///     It interactively displays grouped configuration settings, allowing users to view and edit them.
+		///     Includes functionality for refreshing, saving, and resetting configurations to their default values.
+		/// </remarks>
+		private void OnGUI()
+		{
+			if (_GroupedSettings == null)
+			{
+				EditorGUILayout.HelpBox("Could not load settings. Please check the console for errors.",
+					MessageType.Error);
+				if (GUILayout.Button("Retry")) RefreshSettings();
+				return;
+			}
 
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            GUILayout.Label("Pandora Configuration Settings", EditorStyles.boldLabel);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Refresh", EditorStyles.toolbarButton)) RefreshSettings();
-            EditorGUILayout.EndHorizontal();
+			EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+			GUILayout.Label("Pandora Configuration Settings", EditorStyles.boldLabel);
+			GUILayout.FlexibleSpace();
+			if (GUILayout.Button("Refresh", EditorStyles.toolbarButton)) RefreshSettings();
+			EditorGUILayout.EndHorizontal();
 
-            _ScrollPosition = EditorGUILayout.BeginScrollView(_ScrollPosition);
+			_ScrollPosition = EditorGUILayout.BeginScrollView(_ScrollPosition);
 
-            // Reset the invalid flag before redrawing all fields.
-            _IsAnyFieldInvalid = false;
+			// Reset the invalid flag before redrawing all fields.
+			_IsAnyFieldInvalid = false;
 
-            foreach (var group in _GroupedSettings)
-            {
-                _GroupFoldouts[group.Key] = EditorGUILayout.Foldout(_GroupFoldouts[group.Key], group.Key, true, EditorStyles.foldoutHeader);
-                if (_GroupFoldouts[group.Key])
-                {
-                    EditorGUI.indentLevel++;
-                    foreach (var setting in group.Value)
-                    {
-                        DrawSetting(setting);
-                        // Aggregate the validity of all fields.
-                        if (!setting.IsValid)
-                        {
-                            _IsAnyFieldInvalid = true;
-                        }
-                    }
-                    EditorGUI.indentLevel--;
-                }
-            }
+			foreach (var group in _GroupedSettings)
+			{
+				_GroupFoldouts[group.Key] = EditorGUILayout.Foldout(_GroupFoldouts[group.Key], group.Key, true,
+					EditorStyles.foldoutHeader);
+				if (_GroupFoldouts[group.Key])
+				{
+					EditorGUI.indentLevel++;
+					foreach (var setting in group.Value)
+					{
+						DrawSetting(setting);
+						// Aggregate the validity of all fields.
+						if (!setting.IsValid) _IsAnyFieldInvalid = true;
+					}
 
-            EditorGUILayout.EndScrollView();
+					EditorGUI.indentLevel--;
+				}
+			}
 
-            EditorGUILayout.BeginHorizontal();
+			EditorGUILayout.EndScrollView();
 
-            // Disable the Save button if any field is invalid
-            EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
-            if (GUILayout.Button("Save Changes"))
-            {
-                SaveChangesAndNotify();
-            }
-            EditorGUI.EndDisabledGroup();
+			EditorGUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("Reset to Defaults"))
-            {
-                var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
-                if (EditorUtility.DisplayDialog("Reset All to Defaults?", $"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.", "Reset", "Cancel"))
-                {
-                    ResetToDefaultsAndNotify();
-                }
-            }
-            EditorGUILayout.EndHorizontal();
-        }
+			// Disable the Save button if any field is invalid
+			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
+			if (GUILayout.Button("Save Changes")) SaveChangesAndNotify();
+			EditorGUI.EndDisabledGroup();
 
-        /// <summary>
-        /// Saves the current configuration settings asynchronously and displays a notification upon success.
-        /// </summary>
-        private async void SaveChangesAndNotify()
-        {
-            GUI.FocusControl(null);
-            try
-            {
-                await ConfigLoader.SaveAsync();
-                var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
-                EditorUtility.DisplayDialog("Success", $"Configuration saved successfully to {configFileName}.", "OK");
-            }
-            catch (Exception) { /* Ignore */ }
-        }
+			if (GUILayout.Button("Reset to Defaults"))
+			{
+				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+				if (EditorUtility.DisplayDialog("Reset All to Defaults?",
+					    $"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.",
+					    "Reset", "Cancel")) ResetToDefaultsAndNotify();
+			}
 
-        /// <summary>
-        /// Resets all configuration settings to their default values and notifies the user upon completion.
-        /// </summary>
-        private async void ResetToDefaultsAndNotify()
-        {
-            GUI.FocusControl(null);
-            try
-            {
-                await ConfigLoader.ResetToDefaultsAsync();
-                RefreshSettings();
-                Repaint();
-                EditorUtility.DisplayDialog("Success", "Configuration has been reset to defaults.", "OK");
-            }
-            catch (Exception) { /* Ignore */ }
-        }
+			EditorGUILayout.EndHorizontal();
+		}
 
-        /// <summary>
-        /// Validates all configuration fields within the editor window.
-        /// </summary>
-        private void ValidateAllFields()
-        {
-            if (_GroupedSettings == null) return;
-            _IsAnyFieldInvalid = _GroupedSettings.Values.SelectMany(_list => _list).Any(_s => !_s.IsValid);
-        }
+		/// <summary>
+		///     Saves the current configuration settings asynchronously and displays a notification upon success.
+		/// </summary>
+		private async void SaveChangesAndNotify()
+		{
+			try
+			{
+				GUI.FocusControl(null);
 
-        /// <summary>
-        /// Draws a single configuration setting in the editor interface, including validation and error handling.
-        /// </summary>
-        /// <param name="_setting">The configuration setting to be displayed and modified.</param>
-        private void DrawSetting(DisplaySetting _setting)
-        {
-            var entry = _setting.Entry;
-            var label = new GUIContent(entry.Key, entry.Description);
+				await ConfigLoader.SaveAsync();
+				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+				EditorUtility.DisplayDialog("Success", $"Configuration saved successfully to {configFileName}.", "OK");
+			}
+			catch (Exception)
+			{
+				/* Ignore */
+			}
+		}
 
-            var originalColor = GUI.backgroundColor;
-            if (!_setting.IsValid)
-            {
-                GUI.backgroundColor = new Color(1f, 0.6f, 0.6f); // Reddish highlight
-            }
+		/// <summary>
+		///     Resets all configuration settings to their default values and notifies the user upon completion.
+		/// </summary>
+		private async void ResetToDefaultsAndNotify()
+		{
+			try
+			{
+				GUI.FocusControl(null);
 
-            // --- Draw appropriate field ---
-            DrawFieldForType(_setting, label);
+				await ConfigLoader.ResetToDefaultsAsync();
+				RefreshSettings();
+				Repaint();
+				EditorUtility.DisplayDialog("Success", "Configuration has been reset to defaults.", "OK");
+			}
+			catch (Exception)
+			{
+				/* Ignore */
+			}
+		}
 
-            GUI.backgroundColor = originalColor;
+		/// <summary>
+		///     Validates all configuration fields within the editor window.
+		/// </summary>
+		private void ValidateAllFields()
+		{
+			if (_GroupedSettings == null) return;
+			_IsAnyFieldInvalid = _GroupedSettings.Values.SelectMany(_list => _list).Any(_s => !_s.IsValid);
+		}
 
-            if (!_setting.IsValid)
-            {
-                EditorGUILayout.HelpBox(_setting.ErrorMessage, MessageType.Error);
-            }
-        }
+		/// <summary>
+		///     Draws a single configuration setting in the editor interface, including validation and error handling.
+		/// </summary>
+		/// <param name="_setting">The configuration setting to be displayed and modified.</param>
+		private void DrawSetting(DisplaySetting _setting)
+		{
+			var entry = _setting.Entry;
+			var label = new GUIContent(entry.Key, entry.Description);
 
-        /// <summary>
-        /// Draws the appropriate UI field for a configuration entry based on its type.
-        /// </summary>
-        /// <param name="_setting">The setting containing the configuration entry to be drawn and its current state.</param>
-        /// <param name="_label">The label used for the UI field.</param>
-        private void DrawFieldForType(DisplaySetting _setting, GUIContent _label)
-        {
-            var entry = _setting.Entry;
-            object newValue = null;
+			var originalColor = GUI.backgroundColor;
+			if (!_setting.IsValid) GUI.backgroundColor = new Color(1f, 0.6f, 0.6f); // Reddish highlight
 
-            EditorGUI.BeginChangeCheck();
+			// --- Draw appropriate field ---
+			DrawFieldForType(_setting, label);
 
-            var parser = ConfigLoader.GetParserForType(entry.ValueType);
-            if (parser is IConfigEditorParser editorParser)
-            {
-                newValue = editorParser.DrawEditorGui(_label, _setting.CurrentValue);
-                _setting.IsValid = true; // Assume custom drawers are always valid
-            }
-            else
-            {
-                if (entry.ValueType == typeof(string))
-                {
-                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    if (newRawValue != _setting.RawValue)
-                    {
-                        _setting.RawValue = newRawValue;
-                        newValue = newRawValue;
-                    }
-                    _setting.IsValid = true;
-                }
-                else if (entry.ValueType == typeof(bool))
-                {
-                    newValue = EditorGUILayout.Toggle(_label, (bool)_setting.CurrentValue);
-                }
-                else if (entry.ValueType == typeof(int))
-                {
-                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
-                    {
-                        _setting.RawValue = newRawValue;
-                    }
+			GUI.backgroundColor = originalColor;
 
-                    if (int.TryParse(_setting.RawValue, out var parsedInt))
-                    {
-                        if (!parsedInt.Equals(_setting.CurrentValue))
-                        {
-                           newValue = parsedInt;
-                        }
-                        _setting.IsValid = true;
-                    }
-                    else
-                    {
-                        _setting.IsValid = false;
-                        _setting.ErrorMessage = "Value must be a valid integer.";
-                    }
-                }
-                else if (entry.ValueType == typeof(float))
-                {
-                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
-                    {
-                        _setting.RawValue = newRawValue;
-                    }
+			if (!_setting.IsValid) EditorGUILayout.HelpBox(_setting.ErrorMessage, MessageType.Error);
+		}
 
-                    if (float.TryParse(_setting.RawValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsedFloat))
-                    {
-                        if (!parsedFloat.Equals(_setting.CurrentValue))
-                        {
-                            newValue = parsedFloat;
-                        }
-                        _setting.IsValid = true;
-                    }
-                    else
-                    {
-                        _setting.IsValid = false;
-                        _setting.ErrorMessage = "Value must be a valid floating-point number.";
-                    }
-                }
-                else if (entry.ValueType == typeof(Vector3))
-                {
-                    newValue = EditorGUILayout.Vector3Field(_label, (Vector3)_setting.CurrentValue);
-                }
-                else if (entry.ValueType == typeof(Color))
-                {
-                    newValue = EditorGUILayout.ColorField(_label, (Color)_setting.CurrentValue);
-                }
-                else if (entry.ValueType.IsEnum)
-                {
-                    newValue = EditorGUILayout.EnumPopup(_label, (Enum)_setting.CurrentValue);
-                }
-                else
-                {
-                    EditorGUILayout.LabelField(_label, new GUIContent($"Unsupported Type: {entry.ValueType.Name}", "To edit this type, implement IConfigEditorParser on its parser."));
-                }
-            }
+		/// <summary>
+		///     Draws the appropriate UI field for a configuration entry based on its type.
+		/// </summary>
+		/// <param name="_setting">The setting containing the configuration entry to be drawn and its current state.</param>
+		/// <param name="_label">The label used for the UI field.</param>
+		private void DrawFieldForType(DisplaySetting _setting, GUIContent _label)
+		{
+			var entry = _setting.Entry;
+			object newValue = null;
 
-            if (EditorGUI.EndChangeCheck() && newValue != null)
-            {
-                _setting.IsValid = true; // Assume valid for non-text fields that changed
-            }
+			EditorGUI.BeginChangeCheck();
 
-            if (newValue != null && _setting.IsValid)
-            {
-                var setValueMethod = entry.GetType().GetMethod("SetValue");
-                setValueMethod?.Invoke(entry, new[] { newValue });
-                _setting.CurrentValue = newValue;
-                if(entry.ValueType != typeof(Vector3) && entry.ValueType != typeof(Color))
-                {
-                    _setting.RawValue = newValue.ToString();
-                }
-            }
-        }
-    }
+			var parser = ConfigLoader.GetParserForType(entry.ValueType);
+			if (parser is IConfigEditorParser editorParser)
+			{
+				newValue = editorParser.DrawEditorGui(_label, _setting.CurrentValue);
+				_setting.IsValid = true; // Assume custom drawers are always valid
+			}
+			else
+			{
+				if (entry.ValueType == typeof(string))
+				{
+					var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+					if (newRawValue != _setting.RawValue)
+					{
+						_setting.RawValue = newRawValue;
+						newValue = newRawValue;
+					}
+
+					_setting.IsValid = true;
+				}
+				else if (entry.ValueType == typeof(bool))
+				{
+					newValue = EditorGUILayout.Toggle(_label, (bool)_setting.CurrentValue);
+				}
+				else if (entry.ValueType == typeof(int))
+				{
+					var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+					if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
+						_setting.RawValue = newRawValue;
+
+					if (int.TryParse(_setting.RawValue, out var parsedInt))
+					{
+						if (!parsedInt.Equals(_setting.CurrentValue)) newValue = parsedInt;
+						_setting.IsValid = true;
+					}
+					else
+					{
+						_setting.IsValid = false;
+						_setting.ErrorMessage = "Value must be a valid integer.";
+					}
+				}
+				else if (entry.ValueType == typeof(float))
+				{
+					var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+					if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
+						_setting.RawValue = newRawValue;
+
+					if (float.TryParse(_setting.RawValue, NumberStyles.Float, CultureInfo.InvariantCulture,
+						    out var parsedFloat))
+					{
+						if (!parsedFloat.Equals(_setting.CurrentValue)) newValue = parsedFloat;
+						_setting.IsValid = true;
+					}
+					else
+					{
+						_setting.IsValid = false;
+						_setting.ErrorMessage = "Value must be a valid floating-point number.";
+					}
+				}
+				else if (entry.ValueType == typeof(Vector3))
+				{
+					newValue = EditorGUILayout.Vector3Field(_label, (Vector3)_setting.CurrentValue);
+				}
+				else if (entry.ValueType == typeof(Color))
+				{
+					newValue = EditorGUILayout.ColorField(_label, (Color)_setting.CurrentValue);
+				}
+				else if (entry.ValueType.IsEnum)
+				{
+					newValue = EditorGUILayout.EnumPopup(_label, (Enum)_setting.CurrentValue);
+				}
+				else
+				{
+					EditorGUILayout.LabelField(_label,
+						new GUIContent($"Unsupported Type: {entry.ValueType.Name}",
+							"To edit this type, implement IConfigEditorParser on its parser."));
+				}
+			}
+
+			if (EditorGUI.EndChangeCheck() &&
+			    newValue != null) _setting.IsValid = true; // Assume valid for non-text fields that changed
+
+			if (newValue != null && _setting.IsValid)
+			{
+				var setValueMethod = entry.GetType().GetMethod("SetValue");
+				setValueMethod?.Invoke(entry, new[] { newValue });
+				_setting.CurrentValue = newValue;
+				if (entry.ValueType != typeof(Vector3) && entry.ValueType != typeof(Color))
+					_setting.RawValue = newValue.ToString();
+			}
+		}
+	}
 }
 
 #endif
