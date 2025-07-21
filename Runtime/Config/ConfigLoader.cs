@@ -27,98 +27,95 @@ using VYaml.Serialization;
 namespace MizoreRainy.Pandora.ConfigUtility
 {
 	/// <summary>
-	///     Handles the initialization, loading, saving, and monitoring of application configuration settings.
-	///     This class provides thread-safe methods for managing configuration files and supports runtime updates
-	///     while ensuring compatibility with custom parsers.
+	///     Provides functionality for initializing, managing, and interacting with application configuration settings.
+	///     This class includes methods for loading, saving, runtime updates, and monitoring configuration files.
 	/// </summary>
 	public static class ConfigLoader
 	{
 		#region Fields
 
 		/// <summary>
-		///     Represents a collection of configuration settings
-		///     that are managed and processed by the configuration loader.
-		///     This variable is used
-		///     to store instances of implemented configuration entries within the application lifecycle.
+		///     Contains a collection of configurable settings used within the application lifecycle.
+		///     It serves as a central repository for managing, loading, and resetting configuration entries.
 		/// </summary>
 		private static readonly List<IConfigEntry> Settings = new();
 
 		/// <summary>
-		///     Maintains a list of configuration value parsers used to handle
-		///     the conversion between various data types and their string representations
-		///     within the configuration system.
+		///     Represents a collection of registered configuration value parsers used within the configuration
+		///     system to handle the conversion of various data types to and from their string representations.
+		///     These parsers facilitate seamless interaction with custom configuration formats and types.
 		/// </summary>
 		private static readonly List<IConfigValueParser> Parsers = new();
 
 		/// <summary>
-		///     A private field that tracks the initialization state of the ConfigLoader.
-		///     This field is set to true once all initialization processes, such as configuration
-		///     discovery and loading, have been successfully completed.
+		///     Indicates whether the ConfigLoader has completed its initialization process.
+		///     This field is used internally to ensure that configuration operations are only performed
+		///     after all required initialization tasks are successfully finished.
 		/// </summary>
 		private static bool _IsInitialized;
 
 		/// <summary>
-		///     Indicates whether the configuration system is currently in the process of initializing.
-		///     This variable is used internally to prevent redundant or simultaneous initialization
-		///     attempts within the application.
+		///     Tracks whether the configuration system is currently undergoing the initialization process.
+		///     Used internally to ensure initialization operations are not executed concurrently
+		///     or redundantly within the application workflow.
 		/// </summary>
 		private static bool _IsInitializing;
 
 		/// <summary>
-		///     Represents the task that tracks any ongoing asynchronous initialization process
-		///     for the configuration system.
-		///     Enables safe handling and awaiting of the same
-		///     initialization process from multiple callers.
+		///     Tracks the task representing the asynchronous initialization process
+		///     of the configuration system within the application.
+		///     This variable ensures that the same initialization logic can be
+		///     awaited from multiple callers without initiating concurrent initializations.
 		/// </summary>
 		private static Task _InitializationTask;
 
 		/// <summary>
-		///     Serves as a synchronization object to ensure thread-safe management of initialization processes.
-		///     Used to prevent concurrent execution and maintain consistency during critical operations.
+		///     Serves as a synchronization mechanism used to ensure thread-safe
+		///     execution of critical sections during the initialization process
+		///     within the configuration loader.
 		/// </summary>
 		private static readonly object InitializationLock = new();
 
 		/// <summary>
-		///     Stores the file path to the configuration file used by the application.
-		///     The location of the file is determined dynamically based on the runtime environment.
-		///     For instance, in the Unity Editor, it points to the project root directory,
-		///     while in standalone builds, it resides next to the application executable.
+		///     Holds the file path to the application's configuration file.
+		///     This variable is dynamically assigned based on the execution environment,
+		///     ensuring the configuration file is correctly located in contexts such as
+		///     the Unity Editor, standalone builds, or mobile platforms.
 		/// </summary>
 		private static string _ConfigFilePath;
 
 		/// <summary>
-		///     A private variable representing a file system watcher that monitors the configuration file for changes.
-		///     This is used
-		///     to enable live-reloading of configuration settings during runtime
-		///     when modifications are detected.
+		///     A private static variable representing a file system watcher
+		///     that observes changes to the configuration file during runtime.
+		///     This enables functionality such as live-reloading of configuration settings
+		///     whenever the file is modified.
 		/// </summary>
 		/// <remarks>
-		///     The variable is initialized and managed within the ConfigLoader class and is active in environments
-		///     like the Unity Editor or Standalone builds.
-		///     It observes changes such as file size or last write time updates.
+		///     The watcher is configured to monitor specific file attributes, such as size and last write time,
+		///     and is activated in suitable runtime environments like Unity Editor or standalone applications.
+		///     It is managed internally by the ConfigLoader class and is disposed of when no longer needed.
 		/// </remarks>
 		private static FileSystemWatcher _Watcher;
 
 		/// <summary>
-		///     Serves as a synchronization mechanism for protecting access to file operations
-		///     within the ConfigLoader class.
-		///     Ensures thread-safe interactions with the configuration
-		///     file to prevent race conditions and data inconsistencies during read or write operations.
+		///     Serves as a synchronization object to manage concurrent access
+		///     to file operations within the ConfigLoader class.
+		///     This variable is used to ensure thread safety and prevent race conditions
+		///     during read and write operations on configuration files.
 		/// </summary>
 		private static readonly object FileLock = new();
 
 		/// <summary>
-		///     Represents the synchronization context of the main thread.
-		///     This is used to ensure that certain operations, particularly those requiring
-		///     the main thread access (e.g., UI updates or interactions with systems like Unity APIs),
-		///     can safely switch context back to the main thread.
+		///     Holds a reference to the synchronization context of the main thread.
+		///     This variable facilitates operations that require execution on the main thread,
+		///     such as UI updates or interaction with frameworks that enforce main-thread constraints.
 		/// </summary>
 		private static SynchronizationContext _MainThreadContext;
 
 		/// <summary>
-		///     Indicates whether the configuration is currently being reloaded.
-		///     This flag helps prevent concurrent or redundant reload operations,
-		///     especially when reacting to file change events.
+		///     Denotes whether the configuration system is in the process of being reloaded.
+		///     This variable is managed internally to avoid overlapping or redundant reload operations,
+		///     ensuring synchronization, especially during configuration file monitoring and updates.
 		/// </summary>
 		private static volatile bool _IsReloading;
 
@@ -150,11 +147,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Synchronously initializes the configuration system.
-		///     Discovers all available configuration settings, loads them
-		///     from the configuration file, and establishes files watching
-		///     for runtime updates in supported environments.
-		///     This method ensures all operations are completed before returning,
-		///     blocking the caller if necessary.
+		///     Discovers and loads all available configuration settings from the configuration file,
+		///     ensuring they are ready before proceeding.
+		///     It also establishes a file watching
+		///     for runtime updates in supported environments, enabling dynamic configuration changes.
+		///     This method ensures all initialization tasks are completed before returning,
+		///     potentially blocking the calling thread during the process.
 		/// </summary>
 		public static void Initialize()
 		{
@@ -239,8 +237,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		/// <returns>
 		///     A Task representing the asynchronous operation.
-		///     When complete, it indicates
-		///     that the configuration system has been fully initialized and is ready for use.
+		///     When complete, it indicates that the configuration system has been fully initialized and is ready for use.
 		/// </returns>
 		private static async Task InitializeAsyncInternal()
 		{
@@ -280,11 +277,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Ensures the ConfigLoader is initialized.
-		///     If the loader is not yet initialized,
-		///     it will perform a synchronous initialization to guarantee readiness.
-		///     This method is designed to be a safe way to ensure that the configuration system
-		///     is prepared before proceeding with operations that depend on it.
+		///     Ensures that the configuration system is fully initialized and ready for use.
+		///     If the system has not been initialized, this method will perform a synchronous initialization process,
+		///     ensuring all necessary dependencies and configurations are loaded correctly.
+		///     This is a safeguard to guarantee the readiness of the configuration system
+		///     before executing any operations reliant on its state.
 		/// </summary>
 		public static void EnsureInitialized()
 		{
@@ -292,9 +289,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Gets a value indicating whether the configuration system has been successfully initialized.
-		///     When true, all initialization tasks, such as loading configuration files and setting up watchers,
-		///     have been completed.
+		///     Indicates whether the configuration system has been successfully initialized.
+		///     Returns true if the initialization process, involving configuration discovery,
+		///     loading, and runtime readiness, has been completed.
+		///     Otherwise, returns false.
 		/// </summary>
 		public static bool IsInitialized => _IsInitialized;
 
@@ -303,14 +301,15 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region Public API
 
 		/// <summary>
-		///     Retrieves the file path to the configuration file used by the system.
-		///     The location of the file varies depending on the platform:
-		///     - In the Unity Editor, the file is located in the project's root directory.
-		///     - On standalone builds, it is located next to the executable.
-		///     - On mobile platforms, it resides in the persistent data directory.
+		///     Retrieves the absolute file path of the configuration file used by the system.
+		///     The path is determined based on platform-specific directories and file naming conventions:
+		///     - In Unity Editor: Located in the project's root directory.
+		///     - In standalone builds: Placed next to the application's executable.
+		///     - On mobile platforms: Stored in the persistent data directory.
+		///     A default file name, such as "config.yaml" or "config.ini", is used based on system flags.
 		/// </summary>
 		/// <returns>
-		///     The absolute file path of the configuration file as a string.
+		///     A string representing the full path to the configuration file.
 		/// </returns>
 		public static string GetConfigPath()
 		{
@@ -319,7 +318,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 				var fileName = "config.yaml";
 #else
-	   var fileName = " config.ini";
+	   var fileName = "config.ini";
 #endif
 
 #if UNITY_EDITOR
@@ -343,8 +342,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		/// <param name="_parser">
 		///     The custom parser to be registered, responsible for
-		///     parsing
-		///     and converting complex types to and from strings within the configuration system.
+		///     parsing and converting complex types to and from strings within the configuration system.
 		/// </param>
 		public static void RegisterParser(IConfigValueParser _parser)
 		{
@@ -358,13 +356,14 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Retrieves an appropriate <see cref="IConfigValueParser" /> for the specified type.
-		///     If no registered parser can handle the given type, null is returned.
+		///     Retrieves an appropriate parser instance that implements <see cref="IConfigValueParser" />
+		///     for handling the specified type.
+		///     If a parser that can handle the type is not found, null is returned.
 		/// </summary>
-		/// <param name="_type">The type for which a parser is requested.</param>
+		/// <param name="_type">The type for which a suitable parser is being requested.</param>
 		/// <returns>
-		///     An <see cref="IConfigValueParser" /> instance capable of handling the type, or null if no suitable parser is
-		///     registered.
+		///     An instance of <see cref="IConfigValueParser" /> capable of parsing the specified type,
+		///     or null if no registered parser can handle the given type.
 		/// </returns>
 		internal static IConfigValueParser GetParserForType(Type _type)
 		{
@@ -376,10 +375,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region File Operations
 
 		/// <summary>
-		///     Synchronously loads configuration settings from a file on disk.
-		///     If the configuration file does not exist, a new file is created with default settings.
-		///     Ensures integrity by replacing invalid or missing entries in the file with default values.
-		///     Automatically saves the configuration after loading to ensure consistency.
+		///     Synchronously loads configuration settings from a file located on the disk.
+		///     If the configuration file is not found, a new file is automatically created containing the default settings.
+		///     Invalid or missing entries in the configuration file are replaced with default values
+		///     to maintain data integrity.
+		///     Ensures consistency by saving the updated configuration back to the file after loading.
 		/// </summary>
 		private static void LoadFromFileSync()
 		{
@@ -402,10 +402,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// <summary>
 		///     Asynchronously loads application settings from the configuration file.
 		///     If the file does not exist, a new configuration file is created with default values.
-		///     Invalid or missing entries are replaced with their corresponding default values to ensure consistency.
+		///     Missing or invalid entries in the configuration are automatically replaced with defaults,
+		///     ensuring the integrity and consistency of the loaded settings.
 		/// </summary>
 		/// <returns>
-		///     A Task representing the asynchronous operation of loading and validating the configuration file.
+		///     A Task representing the operation of reading, validating, and applying
+		///     settings from the configuration file.
 		/// </returns>
 		public static async Task LoadFromFileAsync()
 		{
@@ -428,8 +430,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// <summary>
 		///     Synchronously saves all configuration settings to the designated file.
 		///     Temporarily halts the file watcher to prevent triggering loops during the save process.
-		///     Use the appropriate format (e.g., INI or YAML) based on the active configuration.
-		///     Ensures the file watcher is resumed after the save operation is completed.
+		///     Use the active configuration format (e.g., INI or YAML) for saving.
+		///     Ensures the file watcher is properly resumed after the operation concludes.
 		/// </summary>
 		private static void SaveSync()
 		{
@@ -450,12 +452,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Saves all configuration settings to the associated file asynchronously.
-		///     Ensures the configuration's integrity during the save operation and safeguards against unintended
-		///     changes by temporarily stopping the file watcher.
+		///     Ensures the configuration's integrity during the save operation by temporarily halting the file watcher,
+		///     preventing unintended interactions, and safeguarding against potential infinite loops.
 		/// </summary>
 		/// <returns>
-		///     A task representing the asynchronous save operation,
-		///     completing once all changes are written to the configuration file.
+		///     A task that represents the asynchronous save operation.
+		///     The task completes when all changes
+		///     are successfully written to the configuration file.
 		/// </returns>
 		public static async Task SaveAsync()
 		{
@@ -476,13 +479,15 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Resets all configuration settings to their default values as defined in the code.
-		///     The default values are then saved back to the configuration file, overwriting any existing content.
-		///     This operation is performed asynchronously.
+		///     The default values are saved back to the configuration file, overwriting any
+		///     previously existing content.
+		///     This method ensures that the loader is properly
+		///     initialized before performing the reset operation.
+		///     The operation is performed asynchronously.
 		/// </summary>
 		/// <returns>
-		///     A task
-		///     representing the asynchronous operation
-		///     of resetting and saving default configuration settings.
+		///     A task representing the asynchronous operation of resetting
+		///     and saving the default configuration settings.
 		/// </returns>
 		public static async Task ResetToDefaultsAsync()
 		{
@@ -503,10 +508,14 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Synchronously loads configuration settings from a specified INI file.
-		///     Reads key-value pairs from the file, applies values to registered settings, and
-		///     sets any missing configuration entries to their default values.
+		///     Processes the file to extract key-value pairs and applies the values to the
+		///     corresponding registered settings.
+		///     If a configuration entry is missing in the file,
+		///     the corresponding setting is reverted to its default value.
 		/// </summary>
-		/// <param name="_path">The file path to the INI configuration file.</param>
+		/// <param name="_path">
+		///     The file path to the INI configuration file being loaded.
+		/// </param>
 		private static void LoadFromIniSync(string _path)
 		{
 			var fileValues = new Dictionary<string, string>();
@@ -538,13 +547,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		// ReSharper disable once UnusedMember.Local
 		/// <summary>
 		///     Asynchronously loads configuration settings from an INI file.
-		///     The provided file path is used to locate and read the configuration data.
-		///     This method operates asynchronously but executes the synchronous version of the load operation.
+		///     Uses the provided file path to locate and read the configuration data,
+		///     ensuring settings are updated with values from the file
+		///     while maintaining defaults for missing entries.
 		/// </summary>
-		/// <param name="_path">The file path of the INI file to load configuration settings from.</param>
+		/// <param name="_path">The file path of the INI file containing configuration settings.</param>
 		/// <returns>
-		///     Returns a Task
-		///     that represents the asynchronous operation of loading the INI configuration.
+		///     A Task representing the asynchronous operation of loading the configuration from the INI file.
 		/// </returns>
 		private static Task LoadFromIniAsync(string _path)
 		{
@@ -636,13 +645,15 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 #if HAVE_VYAML
 		/// <summary>
-		///     Loads configuration settings synchronously from a YAML file.
-		///     Parses the YAML data and populates the registered configuration entries
-		///     with their corresponding values or defaults if keys are missing.
-		///     If an error occurs during file reading or deserialization,
-		///     an empty configuration dictionary is used, and the system logs the error.
+		///     Loads configuration settings synchronously from a YAML file located at the specified path.
+		///     This method uses the YAML serializer to read and parse the configuration,
+		///     then applies the parsed values to the registered settings.
+		///     If an error occurs during the process,
+		///     default values are applied to the settings.
 		/// </summary>
-		/// <param name="_path">The file path to the YAML configuration file.</param>
+		/// <param name="_path">
+		///     The file path of the YAML configuration file to be loaded.
+		/// </param>
 		private static void LoadFromYamlSync(string _path)
 		{
 			Dictionary<string, object> yamlData;
@@ -654,8 +665,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					yamlBytes = File.ReadAllBytes(_path);
 				}
 
-				yamlData = YamlSerializer.Deserialize<Dictionary<string, object>>(yamlBytes) ??
-				           new Dictionary<string, object>();
+				var rawData = YamlSerializer.Deserialize<object>(yamlBytes);
+				yamlData = FlattenYaml(rawData);
 			}
 			catch (Exception e)
 			{
@@ -664,20 +675,21 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 
 			foreach (var setting in Settings)
-				// A more complex implementation could handle nesting based on GroupName
-				if (yamlData.TryGetValue(setting.Key, out var value))
+			{
+				// The key in the flattened dictionary will be the full path (e.g., "Group.SubGroup.Key")
+				var fullKey = $"{setting.GroupName}.{setting.Key}";
+				if (yamlData.TryGetValue(fullKey, out var value))
 					setting.SetValueFromString(value?.ToString() ?? "");
-				else setting.SetToDefault();
+				else
+					setting.SetToDefault();
+			}
 		}
 
 		/// <summary>
 		///     Asynchronously loads configuration settings from a YAML file.
-		///     Reads the specified file path, parses the YAML data,
-		///     and applies it to the appropriate configuration settings.
-		///     The operation completes after the YAML file is fully processed.
 		/// </summary>
-		/// <param name="_path">The file path to the YAML configuration file to be loaded.</param>
-		/// <returns>A task that represents the asynchronous file loading operation.</returns>
+		/// <param name="_path">The path to the YAML configuration file to be loaded.</param>
+		/// <returns>A task representing the asynchronous operation.</returns>
 		private static Task LoadFromYamlAsync(string _path)
 		{
 			LoadFromYamlSync(_path);
@@ -686,18 +698,20 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Saves the current configuration settings to a YAML file synchronously.
-		///     This method collects all registered settings and writes them to the specified file path.
+		///     This method uses the specified file path to write configuration data
+		///     in YAML format.
+		///     Thread-safety is ensured to prevent concurrent file access issues.
 		/// </summary>
-		/// <param name="_path">The file path where the YAML configuration will be saved.</param>
+		/// <param name="_path">
+		///     The full file path where the YAML configuration file will be saved.
+		///     Must be a valid writable file path.
+		/// </param>
 		private static void SaveToYamlSync(string _path)
 		{
-			var data = new Dictionary<string, object>();
-			foreach (var setting in Settings)
-				// A more complex implementation could build a nested dictionary based on GroupName
-				data[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
 			try
 			{
-				var yamlBytes = YamlSerializer.Serialize(data).ToArray();
+				var rootNode = BuildNestedYamlData();
+				var yamlBytes = YamlSerializer.Serialize(rootNode).ToArray();
 				lock (FileLock)
 				{
 					File.WriteAllBytes(_path, yamlBytes);
@@ -711,25 +725,15 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Saves the current application configuration settings to a YAML file asynchronously.
-		///     This method serializes all registered configuration settings into a YAML format
-		///     and writes them to the specified file path.
 		/// </summary>
-		/// <param name="_path">
-		///     The absolute or relative path to the YAML file
-		///     where the configuration settings will be saved.
-		/// </param>
-		/// <returns>
-		///     A task representing the asynchronous save operation.
-		///     The task completes when the file writing is finished.
-		/// </returns>
+		/// <param name="_path">The file path where the YAML configuration will be saved.</param>
+		/// <returns>A task representing the asynchronous save operation.</returns>
 		private static async Task SaveToYamlAsync(string _path)
 		{
-			var data = new Dictionary<string, object>();
-			foreach (var setting in Settings)
-				data[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
 			try
 			{
-				var yamlBytes = YamlSerializer.Serialize(data).ToArray();
+				var rootNode = BuildNestedYamlData();
+				var yamlBytes = YamlSerializer.Serialize(rootNode).ToArray();
 				await Task.Run(() =>
 				{
 					lock (FileLock)
@@ -743,6 +747,108 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				Debug.LogError($"[ConfigLoader] Failed to save YAML config! Error: {e.Message}");
 			}
 		}
+
+		/// <summary>
+		///     Builds a nested dictionary structure from the list of configuration settings,
+		///     organizing entries hierarchically based on their group names.
+		///     The group names are parsed
+		///     to create a tree-like structure, ensuring proper nesting where group names are delimited by periods.
+		/// </summary>
+		/// <returns>
+		///     A dictionary representing the hierarchical structure of the configuration settings,
+		///     where keys are the top-level group names,
+		///     and values are nested dictionaries or configuration values.
+		/// </returns>
+		private static Dictionary<string, object> BuildNestedYamlData()
+		{
+			var root = new Dictionary<string, object>();
+
+			var topLevelGroups = Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct();
+
+			foreach (var topLevelGroup in topLevelGroups)
+			{
+				var node = new Dictionary<string, object>();
+				root[topLevelGroup] = node;
+				BuildNode(node, topLevelGroup);
+			}
+
+			return root;
+		}
+
+		/// <summary>
+		///     Recursively builds a hierarchical representation of configuration settings by mapping
+		///     nested group structures into a dictionary tree format.
+		///     This method organizes all settings
+		///     under their respective group paths, facilitating the creation of a structured configuration.
+		///     If child groups or additional levels are encountered, the method recursively calls itself
+		///     to process nested structures and ensures all related settings are correctly included in the tree.
+		/// </summary>
+		/// <param name="_parentNode">
+		///     The parent node within the hierarchy, represented as a dictionary,
+		///     where child nodes and settings will be added.
+		/// </param>
+		/// <param name="_currentPath">
+		///     The current group path being processed.
+		///     This path determines which settings and subgroups are relevant to the node.
+		/// </param>
+		private static void BuildNode(Dictionary<string, object> _parentNode, string _currentPath)
+		{
+			var directSettings = Settings.Where(_s => _s.GroupName == _currentPath);
+			foreach (var setting in directSettings)
+				_parentNode[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
+
+			var childrenGroups = Settings
+				.Where(_s => _s.GroupName.StartsWith(_currentPath + "."))
+				.Select(_s => _s.GroupName.Substring(_currentPath.Length + 1).Split('.')[0])
+				.Distinct();
+
+			foreach (var childGroup in childrenGroups)
+			{
+				var childNode = new Dictionary<string, object>();
+				_parentNode[childGroup] = childNode;
+				BuildNode(childNode, $"{_currentPath}.{childGroup}");
+			}
+		}
+
+
+		/// <summary>
+		///     Flattens a nested YAML data structure into a flat dictionary using dot-separated keys.
+		///     This method recursively traverses the hierarchy of the given object and converts
+		///     any nested dictionaries into a single-layered dictionary with keys representing
+		///     the hierarchy structure.
+		/// </summary>
+		/// <param name="_yamlData">
+		///     The nested YAML data to be flattened.
+		///     Typically, this is a dictionary
+		///     or an object deserialized from a YAML structure.
+		/// </param>
+		/// <param name="_prefix">
+		///     An optional prefix that is prepended to the keys in the resulting dictionary,
+		///     representing the hierarchy path of the current level.
+		/// </param>
+		/// <returns>
+		///     A dictionary with flattened, dot-separated keys mapping to their respective values
+		///     from the provided YAML data.
+		/// </returns>
+		private static Dictionary<string, object> FlattenYaml(object _yamlData, string _prefix = "")
+		{
+			var result = new Dictionary<string, object>();
+			if (_yamlData is Dictionary<object, object> dictionary)
+			{
+				foreach (var kvp in dictionary)
+				{
+					var newPrefix = string.IsNullOrEmpty(_prefix) ? kvp.Key.ToString() : $"{_prefix}.{kvp.Key}";
+					var flattenedChildren = FlattenYaml(kvp.Value, newPrefix);
+					foreach (var flattenedKvp in flattenedChildren) result[flattenedKvp.Key] = flattenedKvp.Value;
+				}
+			}
+			else
+			{
+				if (!string.IsNullOrEmpty(_prefix)) result[_prefix] = _yamlData;
+			}
+
+			return result;
+		}
 #endif
 
 		#endregion
@@ -750,12 +856,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region File Watching
 
 		/// <summary>
-		///     Starts watching the configuration file for changes and enables live-reloading.
-		///     Uses a file system watcher to detect modifications to the configuration file,
-		///     which triggers automatic reloading of settings.
-		///     The watcher will be automatically stopped when the application terminates.
-		///     If the watcher fails to initialize, live-reloading will be disabled, and an error message will be logged.
-		///     This functionality is only supported on certain platforms (e.g., Unity Editor or Standalone builds).
+		///     Starts monitoring the configuration file for any changes and allows live-reloading functionality.
+		///     Uses a file system watcher to detect changes such as modifications to the configuration file,
+		///     automatically triggering a reload of the settings when changes occur.
+		///     The watcher will stop monitoring when the application is about to terminate,
+		///     ensuring proper cleanup of resources.
+		///     If the watcher fails to initialize, live-reloading will not be enabled, and an error will be logged.
+		///     This feature is available only on supported platforms, such as the Unity Editor or standalone builds.
 		/// </summary>
 		public static void StartWatching()
 		{
@@ -786,10 +893,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Stops monitoring the configuration file for changes.
-		///     This method disables the file system watcher, removes event subscriptions,
-		///     and releases resources previously used for monitoring changes.
-		///     It prevents
-		///     further automatic updates to configuration settings based on file modifications.
+		///     This method disables the file system watcher, unsubscribes from any associated events,
+		///     and releases resources allocated for file monitoring.
+		///     Designed to prevent further
+		///     automatic updates to the configuration state triggered by file modifications.
 		/// </summary>
 		public static void StopWatching()
 		{
@@ -807,7 +914,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		/// <summary>
 		///     Handles the event triggered when the configuration file is changed.
-		///     This method ensures settings are reloaded from the updated file to keep the application state consistent.
+		///     Ensures the updated configuration file is processed, reloading settings
+		///     to maintain consistency with the new file state.
 		/// </summary>
 		/// <param name="_sender">The source of the event, typically an instance of FileSystemWatcher.</param>
 		/// <param name="_e">The event arguments containing details about the file change.</param>
@@ -838,9 +946,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region Settings Discovery
 
 		/// <summary>
-		///     Discovers and registers settings defined within the application by scanning all loaded assemblies.
-		///     This method identifies and processes static classes to locate configuration entries, ensuring
-		///     all applicable settings are registered for configuration management.
+		///     Discovers and registers configuration settings by scanning all loaded assemblies for static classes
+		///     that contain configuration entries.
+		///     This is an internal process used during initialization to
+		///     ensure all relevant settings are available for the application's configuration system.
 		/// </summary>
 		private static void DiscoverSettings()
 		{
@@ -866,22 +975,17 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Scans the specified type for static, readonly fields implementing the IConfigEntry interface and
-		///     performs the discovery of configuration settings.
-		///     The discovered settings are grouped under the
-		///     provided group name and recursively processed for any nested types.
-		///     Prevents redundant processing
-		///     by tracking types that have already been handled.
+		///     Scans the specified type for static, readonly fields that implement the IConfigEntry interface and
+		///     performs discovery of configuration entries.
+		///     Handles recursive processing of nested types
+		///     and groups the discovered settings under the provided group name.
+		///     Ensures each type is processed only once using the collection of processed types.
 		/// </summary>
-		/// <param name="_type">The type to examine for static configuration entry fields.</param>
-		/// <param name="_groupName">
-		///     The name of the group
-		///     under which the discovered configuration settings are registered.
-		/// </param>
+		/// <param name="_type">The type to scan for configuration entry fields.</param>
+		/// <param name="_groupName">The group name under which the discovered settings will be categorized.</param>
 		/// <param name="_processedTypes">
-		///     A collection
-		///     maintaining types that have been processed
-		///     to avoid redundant scans or recursion.
+		///     The collection of types
+		///     that have already been processed to prevent redundant scanning.
 		/// </param>
 		private static void DiscoverSettingsInType(Type _type, string _groupName, ISet<Type> _processedTypes)
 		{

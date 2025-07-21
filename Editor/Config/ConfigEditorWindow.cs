@@ -22,96 +22,139 @@ using UnityEngine;
 namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 {
 	/// <summary>
-	///     Represents an editor window for modifying and managing configuration settings in the Unity Editor.
+	///     Provides a dedicated Unity Editor window for viewing, editing, and managing Pandora configuration settings.
 	/// </summary>
 	public class ConfigEditorWindow : EditorWindow
 	{
+		#region Private Classes
+
 		/// <summary>
-		///     Represents the display settings for an individual configuration entry within the ConfigEditorWindow.
+		///     Represents the display settings for an individual configuration entry,
+		///     including its validation state, current value, and associated metadata.
 		/// </summary>
-		/// <remarks>
-		///     This class is used internally by the ConfigEditorWindow to manage and display the state and validation
-		///     of configuration entries.
-		///     Each setting corresponds to a single configuration entry within the editor.
-		/// </remarks>
 		private class DisplaySetting
 		{
 			/// <summary>
-			///     Represents an instance of a configuration entry implementing the IConfigEntry interface.
-			///     Provides access to configuration metadata such as key, description, group name, and value type.
-			///     This variable is commonly used to interact with configuration settings within the editor,
-			///     allowing values to be displayed, parsed, and updated.
+			///     Represents an implementation of the IConfigEntry interface, used within the
+			///     ConfigEditorWindow for user-defined configuration management.
 			/// </summary>
+			/// <remarks>
+			///     This variable provides access to the underlying configuration entry object,
+			///     encapsulated by the IConfigEntry interface.
+			///     It includes details about the
+			///     entry's key, description, group, value type, and functionality for accessing
+			///     and modifying its value.
+			///     The Entry is critical for managing individual
+			///     configuration items inside the editor.
+			/// </remarks>
 			public IConfigEntry Entry;
 
 			/// <summary>
-			///     Represents the current value of the configuration entry being displayed
-			///     in the editor.
-			///     This value is dynamically determined and can vary based
-			///     on the configuration entry type.
+			///     Represents the current value of a configuration entry displayed within the ConfigEditorWindow.
+			///     This value is used to reflect the state of the entry during the configuration process
+			///     and may be modified through user interaction in the editor interface.
+			///     The type of this value is dynamically determined based on the associated configuration entry.
 			/// </summary>
 			public object CurrentValue;
 
 			/// <summary>
-			///     Stores the raw string value of a configuration field entered by the user.
-			///     Primarily used for validation and conversion to the expected data type for the configuration entry.
+			///     Holds the current raw string value of a configuration entry as entered in the text field within the editor UI.
+			///     This value is typically validated and parsed to derive the final value for the configuration entry.
 			/// </summary>
 			public string RawValue; // Holds the text field's current string, used for validation
 
 			/// <summary>
-			///     Indicates whether the current field value is valid based on the validation rules.
+			///     Indicates whether the current value of the setting is valid.
+			///     If set to false, it usually means the input does not pass validation checks,
+			///     and an error message is provided in the <c>ErrorMessage</c> property.
 			/// </summary>
 			public bool IsValid = true;
 
 			/// <summary>
-			///     Stores the error message to be displayed when the corresponding configuration value is invalid.
-			///     Typically used for communicating validation issues in the editor interface.
+			///     Stores the error message associated with the validation status of a configuration setting.
 			/// </summary>
+			/// <remarks>
+			///     The error message is displayed when the associated configuration value is deemed invalid.
+			///     For example, this could contain messages such as "Value must be a valid integer" or
+			///     "Value must be a valid floating-point number,"
+			///     depending on the type of validation failure.
+			/// </remarks>
 			public string ErrorMessage = "";
 		}
 
 		/// <summary>
-		///     Holds a collection of configuration settings grouped by category names.
+		///     Represents a node in the hierarchical configuration tree,
+		///     allowing organization and storage of nested settings.
+		///     Each node can contain a list of settings and a dictionary of child nodes.
 		/// </summary>
-		/// <remarks>
-		///     The dictionary uses the group name as the key and a list of <c>DisplaySetting</c> objects as the value.
-		///     Each group corresponds to a category of settings stored in <c>ConfigLoader</c>.
-		///     The grouped structure aids in organizing and displaying configuration settings within the editor window.
-		/// </remarks>
-		private Dictionary<string, List<DisplaySetting>> _GroupedSettings;
+		private class ConfigNode
+		{
+			/// <summary>
+			///     The name of the configuration node.
+			///     It serves as an identifier for the node within the hierarchical
+			///     tree of settings, differentiating it from other nodes at the same level.
+			/// </summary>
+			public string Name;
+
+			/// <summary>
+			///     Indicates whether the foldout (expand/collapse)
+			///     state of a configuration node in the hierarchy is expanded.
+			///     This variable is used
+			///     to track and manage the visibility of nested configuration elements within the Unity Editor window.
+			/// </summary>
+			public bool IsFoldout = true;
+
+			/// <summary>
+			///     Represents a collection of DisplaySettings associated with configuration nodes
+			///     in the ConfigEditorWindow.
+			///     These settings are used to manage and display
+			///     hierarchical configuration data within the editor.
+			/// </summary>
+			public readonly List<DisplaySetting> Settings = new();
+
+			/// <summary>
+			///     A dictionary representing the child nodes of the current configuration node.
+			///     Each key is the name of a child node, and the value is the associated <see cref="ConfigNode" />.
+			///     This allows the configuration settings to be organized hierarchically.
+			/// </summary>
+			public readonly Dictionary<string, ConfigNode> Children = new();
+		}
+
+		#endregion
 
 		/// <summary>
-		///     A dictionary used in the ConfigEditorWindow to track the foldout states of configuration groups.
-		///     Each key represents a group name,
-		///     while the corresponding boolean value indicates whether the group's foldout is
-		///     expanded (true) or collapsed (false).
+		///     Represents the root node in the hierarchical tree of configuration settings
+		///     displayed in the Config Editor Window.
+		///     This node serves as the entry point
+		///     for managing and organizing configuration settings, containing child nodes
+		///     and settings entries.
 		/// </summary>
-		private readonly Dictionary<string, bool> _GroupFoldouts = new();
+		private ConfigNode _RootNode;
 
 		/// <summary>
-		///     Stores the current scroll position of the ConfigEditorWindow.
-		///     Used to manage vertical scrolling within the GUI when displaying grouped configuration settings.
+		///     Stores the current scroll position within the configuration editor window.
+		///     This variable is used to track the position of the scroll view when rendering
+		///     configuration nodes and settings in the Unity Editor.
+		///     It allows the user to
+		///     maintain their position within the editor interface while navigating or editing
+		///     configuration data.
 		/// </summary>
 		private Vector2 _ScrollPosition;
 
 		/// <summary>
-		///     A private boolean field that indicates whether any field within the configuration editor window
-		///     is invalid based on the validation rules associated with the text fields.
+		///     Indicates whether any field within the configuration editor is invalid.
 		/// </summary>
 		/// <remarks>
-		///     This field is used to determine if the "Save Changes" button within the ConfigEditorWindow
-		///     should be enabled or disabled.
-		///     A value of <c>true</c> disables the button, while <c>false</c>
-		///     enables it.
-		///     The validation state of all fields is updated by the <c>ValidateAllFields</c> method,
-		///     which checks the validity of each field within the grouped settings.
+		///     This boolean variable is used
+		///     to track the validation state of the fields displayed in the configuration editor.
+		///     It is set to <c>true</c> if one or more fields fail validation checks,
+		///     and <c>false</c> when all fields are valid.
+		///     The value is updated dynamically during the rendering process and through validation methods.
 		/// </remarks>
 		private bool _IsAnyFieldInvalid;
 
 		/// <summary>
-		///     Displays the ConfigEditorWindow in the Unity Editor.
-		///     This method is associated with the "Pandora/Config/Edit Configuration" menu item
-		///     and opens the "Pandora Config Editor" window.
+		///     Displays the Config Editor Window for modifying and managing configuration settings in the Unity Editor.
 		/// </summary>
 		[MenuItem("Pandora/Config/Edit Configuration")]
 		public static void ShowWindow()
@@ -120,11 +163,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 		/// <summary>
-		///     Called when the ConfigEditorWindow is enabled in the Unity Editor.
-		///     This method refreshes the configuration settings by populating the grouped settings
-		///     with their current values and initializing foldout states for groups.
-		///     If the settings
-		///     cannot be retrieved, an error message is logged in the console.
+		///     Called when the editor window is enabled.
+		///     Initializes or refreshes the configuration settings to ensure
+		///     that the editor displays the most up-to-date information.
 		/// </summary>
 		private void OnEnable()
 		{
@@ -132,65 +173,60 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 		/// <summary>
-		///     Refreshes the configuration settings
-		///     by reloading data from the configuration source and rebuilding the internal
-		///     structure used to display configurable entries in the editor window.
+		///     Reloads and reorganizes the configuration settings into a hierarchical structure.
+		///     This process retrieves the current configuration state and updates the visual representation
+		///     within the editor.
+		///     If the configuration information cannot be found or loaded, an error
+		///     message is logged and the settings display is disabled.
 		/// </summary>
-		/// <remarks>
-		///     This method ensures that the configuration settings are up to date by fetching the latest data from the
-		///     `ConfigLoader`.
-		///     It categorizes the settings into groups, preparing them for display.
-		///     If an error occurs (e.g., failure to locate expected configuration fields),
-		///     logs an error and initializes an empty
-		///     settings structure.
-		///     Validation is also performed on all configuration fields after loading.
-		/// </remarks>
 		private void RefreshSettings()
 		{
 			ConfigLoader.EnsureInitialized();
 			var settingsField = typeof(ConfigLoader).GetField("Settings", BindingFlags.NonPublic | BindingFlags.Static);
 			if (settingsField == null)
 			{
-				_GroupedSettings = new Dictionary<string, List<DisplaySetting>>();
+				_RootNode = null;
 				Debug.LogError(
 					"[ConfigEditorWindow] Could not find 'Settings' field in ConfigLoader. Cannot display settings.");
 				return;
 			}
 
 			var settings = (List<IConfigEntry>)settingsField.GetValue(null);
+			_RootNode = new ConfigNode { Name = "Root" };
 
-			_GroupedSettings = settings
-				.GroupBy(_s => _s.GroupName)
-				.OrderBy(_g => _g.Key)
-				.ToDictionary(
-					_g => _g.Key,
-					_g => _g.Select(_s =>
-					{
-						var currentValue = _s.GetType().GetProperty("Value")?.GetValue(_s);
-						return new DisplaySetting
-						{
-							Entry = _s,
-							CurrentValue = currentValue,
-							RawValue = currentValue?.ToString() ?? ""
-						};
-					}).ToList()
-				);
+			// Build the tree structure from the flat list of settings
+			foreach (var setting in settings)
+			{
+				var pathParts = setting.GroupName.Split('.');
+				var currentNode = _RootNode;
 
-			foreach (var groupKey in _GroupedSettings.Keys) _GroupFoldouts.TryAdd(groupKey, true);
+				foreach (var part in pathParts)
+				{
+					if (!currentNode.Children.ContainsKey(part))
+						currentNode.Children[part] = new ConfigNode { Name = part };
+					currentNode = currentNode.Children[part];
+				}
+
+				var currentValue = setting.GetType().GetProperty("Value")?.GetValue(setting);
+				currentNode.Settings.Add(new DisplaySetting
+				{
+					Entry = setting,
+					CurrentValue = currentValue,
+					RawValue = currentValue?.ToString() ?? ""
+				});
+			}
+
 			ValidateAllFields();
 		}
 
 		/// <summary>
-		///     Renders and manages the GUI for the Config Editor Window in the Unity Editor.
+		///     Handles the rendering and layout of the GUI for the configuration editor window.
+		///     Includes functionality for refreshing settings, navigating the configuration hierarchy,
+		///     and performing actions such as saving changes or resetting to defaults.
 		/// </summary>
-		/// <remarks>
-		///     Unity automatically calls this method to draw the editor window's graphical user interface.
-		///     It interactively displays grouped configuration settings, allowing users to view and edit them.
-		///     Includes functionality for refreshing, saving, and resetting configurations to their default values.
-		/// </remarks>
 		private void OnGUI()
 		{
-			if (_GroupedSettings == null)
+			if (_RootNode == null)
 			{
 				EditorGUILayout.HelpBox("Could not load settings. Please check the console for errors.",
 					MessageType.Error);
@@ -206,32 +242,15 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 			_ScrollPosition = EditorGUILayout.BeginScrollView(_ScrollPosition);
 
-			// Reset the invalid flag before redrawing all fields.
-			_IsAnyFieldInvalid = false;
+			_IsAnyFieldInvalid = false; // Reset before redraw
 
-			foreach (var group in _GroupedSettings)
-			{
-				_GroupFoldouts[group.Key] = EditorGUILayout.Foldout(_GroupFoldouts[group.Key], group.Key, true,
-					EditorStyles.foldoutHeader);
-				if (_GroupFoldouts[group.Key])
-				{
-					EditorGUI.indentLevel++;
-					foreach (var setting in group.Value)
-					{
-						DrawSetting(setting);
-						// Aggregate the validity of all fields.
-						if (!setting.IsValid) _IsAnyFieldInvalid = true;
-					}
-
-					EditorGUI.indentLevel--;
-				}
-			}
+			// Recursively draw all nodes starting from the root's children
+			foreach (var node in _RootNode.Children.Values.OrderBy(_n => _n.Name)) DrawNode(node);
 
 			EditorGUILayout.EndScrollView();
 
 			EditorGUILayout.BeginHorizontal();
 
-			// Disable the Save button if any field is invalid
 			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
 			if (GUILayout.Button("Save Changes")) SaveChangesAndNotify();
 			EditorGUI.EndDisabledGroup();
@@ -248,33 +267,65 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 		/// <summary>
-		///     Saves the current configuration settings asynchronously and displays a notification upon success.
+		///     Recursively draws a hierarchical configuration node,
+		///     including its settings and child nodes, in the Unity editor window.
 		/// </summary>
+		/// <param name="_node">The configuration node to be drawn, including its settings and child nodes.</param>
+		private void DrawNode(ConfigNode _node)
+		{
+			_node.IsFoldout = EditorGUILayout.Foldout(_node.IsFoldout, _node.Name, true, EditorStyles.foldoutHeader);
+			if (_node.IsFoldout)
+			{
+				EditorGUI.indentLevel++;
+
+				// Draw settings at this level
+				foreach (var setting in _node.Settings.OrderBy(_s => _s.Entry.Key))
+				{
+					DrawSetting(setting);
+					if (!setting.IsValid) _IsAnyFieldInvalid = true;
+				}
+
+				// Recursively draw child nodes
+				foreach (var childNode in _node.Children.Values.OrderBy(_n => _n.Name)) DrawNode(childNode);
+
+				EditorGUI.indentLevel--;
+			}
+		}
+
+		/// <summary>
+		///     Saves the current configuration changes asynchronously
+		///     and displays a success notification upon completion.
+		/// </summary>
+		/// <remarks>
+		///     This method clears the current GUI control focus and attempts to save the updated configuration.
+		///     If the operation is successful, a dialog is displayed to confirm the save.
+		///     Any exceptions during the saving process are silently ignored.
+		/// </remarks>
 		private async void SaveChangesAndNotify()
 		{
 			try
 			{
 				GUI.FocusControl(null);
-
 				await ConfigLoader.SaveAsync();
 				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
 				EditorUtility.DisplayDialog("Success", $"Configuration saved successfully to {configFileName}.", "OK");
 			}
 			catch (Exception)
 			{
-				/* Ignore */
+				/* Ignored */
 			}
 		}
 
 		/// <summary>
-		///     Resets all configuration settings to their default values and notifies the user upon completion.
+		///     Resets all configuration settings to their default values
+		///     and updates the editor UI to reflect the changes.
+		///     Displays a notification dialog upon successful execution.
 		/// </summary>
 		private async void ResetToDefaultsAndNotify()
 		{
 			try
 			{
 				GUI.FocusControl(null);
-
 				await ConfigLoader.ResetToDefaultsAsync();
 				RefreshSettings();
 				Repaint();
@@ -282,23 +333,47 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 			catch (Exception)
 			{
-				/* Ignore */
+				/* Ignored */
 			}
 		}
 
 		/// <summary>
-		///     Validates all configuration fields within the editor window.
+		///     Validates all fields within the configuration hierarchy
+		///     by checking each node and its associated settings for validity.
+		///     Updates the invalid state flag if any invalid fields are detected.
 		/// </summary>
 		private void ValidateAllFields()
 		{
-			if (_GroupedSettings == null) return;
-			_IsAnyFieldInvalid = _GroupedSettings.Values.SelectMany(_list => _list).Any(_s => !_s.IsValid);
+			if (_RootNode == null) return;
+			// Recursively check all nodes for invalid settings
+			_IsAnyFieldInvalid = CheckNodeValidity(_RootNode);
 		}
 
 		/// <summary>
-		///     Draws a single configuration setting in the editor interface, including validation and error handling.
+		///     Checks the validity of all settings within a given configuration node and its children.
 		/// </summary>
-		/// <param name="_setting">The configuration setting to be displayed and modified.</param>
+		/// <param name="_node">
+		///     The configuration node to validate,
+		///     including its nested settings and child nodes.
+		/// </param>
+		/// <returns>
+		///     A boolean value
+		///     indicating whether any setting within the node or its children is invalid.
+		/// </returns>
+		private bool CheckNodeValidity(ConfigNode _node)
+		{
+			if (_node.Settings.Any(_s => !_s.IsValid)) return true;
+			return _node.Children.Values.Any(CheckNodeValidity);
+		}
+
+		/// <summary>
+		///     Renders a user interface for an individual configuration entry,
+		///     allowing the user to view and modify its value.
+		/// </summary>
+		/// <param name="_setting">
+		///     The display settings containing the configuration entry and related metadata,
+		///     including current value, validation state, and error message.
+		/// </param>
 		private void DrawSetting(DisplaySetting _setting)
 		{
 			var entry = _setting.Entry;
@@ -307,7 +382,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			var originalColor = GUI.backgroundColor;
 			if (!_setting.IsValid) GUI.backgroundColor = new Color(1f, 0.6f, 0.6f); // Reddish highlight
 
-			// --- Draw appropriate field ---
 			DrawFieldForType(_setting, label);
 
 			GUI.backgroundColor = originalColor;
@@ -316,10 +390,17 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 		/// <summary>
-		///     Draws the appropriate UI field for a configuration entry based on its type.
+		///     Draws the corresponding input field in the Editor GUI for the given configuration setting,
+		///     based on its data type, and optionally validates the input value.
 		/// </summary>
-		/// <param name="_setting">The setting containing the configuration entry to be drawn and its current state.</param>
-		/// <param name="_label">The label used for the UI field.</param>
+		/// <param name="_setting">
+		///     The display setting
+		///     containing the configuration entry and its associated state.
+		/// </param>
+		/// <param name="_label">
+		///     The label to display for the field,
+		///     including the key and description of the configuration entry.
+		/// </param>
 		private void DrawFieldForType(DisplaySetting _setting, GUIContent _label)
 		{
 			var entry = _setting.Entry;
@@ -331,7 +412,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			if (parser is IConfigEditorParser editorParser)
 			{
 				newValue = editorParser.DrawEditorGui(_label, _setting.CurrentValue);
-				_setting.IsValid = true; // Assume custom drawers are always valid
+				_setting.IsValid = true;
 			}
 			else
 			{
@@ -405,8 +486,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				}
 			}
 
-			if (EditorGUI.EndChangeCheck() &&
-			    newValue != null) _setting.IsValid = true; // Assume valid for non-text fields that changed
+			if (EditorGUI.EndChangeCheck() && newValue != null) _setting.IsValid = true;
 
 			if (newValue != null && _setting.IsValid)
 			{

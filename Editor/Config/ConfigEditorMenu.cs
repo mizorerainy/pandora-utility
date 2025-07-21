@@ -33,7 +33,8 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 
 			// This opens the file in the code editor set in Unity's preferences.
-			CodeEditor.CurrentEditor.OpenProject(path, 1);
+			Debug.Log($"Opening config file at '{path}'...");
+			UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(path, 1);
 		}
 
 		/// <summary>
