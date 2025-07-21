@@ -18,13 +18,13 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 	public static class ConfigEditorMenu
 	{
 		/// <summary>
-		/// Opens the config.txt file in the default external script editor.
+		/// Opens the config.ini file in the default external script editor.
 		/// </summary>
 		[MenuItem("Pandora/Config/Open Config File")]
 		private static void OpenConfigFile()
 		{
 			// Get the path from the same ConfigLoader logic.
-			string path = ConfigLoader.GetConfigPath();
+			var path = ConfigLoader.GetConfigPath();
 
 			// This ensures the file is created if it doesn't exist yet.
 			if (!System.IO.File.Exists(path))
@@ -37,31 +37,31 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 		/// <summary>
-        /// Forces a reload of all settings from the config.txt file.
+        /// Forces a reload of all settings from the config.ini file.
         /// </summary>
         [MenuItem("Pandora/Config/Reload Settings from File")]
         private static void ReloadSettingsFromFile()
         {
             ConfigLoader.EnsureInitialized();
-            Debug.Log("[ConfigLoader] Forcing a reload from config.txt...");
+            Debug.Log("[ConfigLoader] Forcing a reload from config.ini...");
             ConfigLoader.LoadFromFileAsync().GetAwaiter().GetResult();
             Debug.Log("[ConfigLoader] Reload complete.");
         }
 
         /// <summary>
-        /// Resets the config.txt file to the default values defined in the code.
+        /// Resets the config.ini file to the default values defined in the code.
         /// </summary>
         [MenuItem("Pandora/Config/Reset Config to Defaults")]
         private static void ResetConfigToDefaults()
         {
             ConfigLoader.EnsureInitialized();
             if (EditorUtility.DisplayDialog("Reset Configuration to Defaults",
-                "This will overwrite 'config.txt' with the default values defined in your code.\n\nThis action cannot be undone.",
+                "This will overwrite 'config.ini' with the default values defined in your code.\n\nThis action cannot be undone.",
                 "Reset and Overwrite", "Cancel"))
             {
                 Debug.Log("[ConfigLoader] Resetting all settings to default values...");
                 ConfigLoader.ResetToDefaultsAsync().GetAwaiter().GetResult();
-                Debug.Log("[ConfigLoader] Reset complete. config.txt has been updated.");
+                Debug.Log("[ConfigLoader] Reset complete. config.ini has been updated.");
             }
         }
 	}

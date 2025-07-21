@@ -2,7 +2,7 @@
 // File: ConfigLoader.cs
 // Author: MizoreRainy
 // Description: The core engine for loading, parsing, and saving configuration.
-//              This system is dependency-free and uses built-in .NET Task async.
+//              Supports both INI (.txt) and YAML (.yaml) formats conditionally.
 // =================================================================================
 
 using System;
@@ -16,6 +16,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+
+#if HAVE_VYAML
+using VYaml.Serialization;
+#endif
 
 // This attribute grants the specified editor assembly access to this assembly's internal members.
 [assembly: InternalsVisibleTo("MizoreRainy.Pandora.Editor.ConfigUtility")]
@@ -288,10 +292,20 @@ namespace MizoreRainy.Pandora.ConfigUtility
         {
             if (string.IsNullOrEmpty(_ConfigFilePath))
             {
-#if UNITY_EDITOR
-                _ConfigFilePath = Path.Combine(Directory.GetParent(Application.dataPath)!.FullName, "config.txt");
+#if USE_YAML_CONFIG && HAVE_VYAML
+                var fileName = "config.yaml";
 #else
-                _ConfigFilePath = Path.Combine(Path.GetDirectoryName(Application.dataPath)!, "config.txt");
+                var fileName = "config.ini";
+#endif
+
+#if UNITY_EDITOR
+                _ConfigFilePath = Path.Combine(Directory.GetParent(Application.dataPath)!.FullName, fileName);
+#elif UNITY_IOS || UNITY_ANDROID
+                _ConfigFilePath = Path.Combine(Application.persistentDataPath, fileName);
+#elif UNITY_STANDALONE
+                _ConfigFilePath = Path.Combine(Path.GetDirectoryName(Application.dataPath)!, fileName);
+#else
+                _ConfigFilePath = Path.Combine(Application.persistentDataPath, fileName);
 #endif
             }
             return _ConfigFilePath;
@@ -325,14 +339,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// <returns>An <see cref="IConfigValueParser"/> instance capable of handling the type, or null if no suitable parser is registered.</returns>
         internal static IConfigValueParser GetParserForType(Type _type)
         {
-            foreach (var parser in Parsers)
-            {
-                if (parser.CanParse(_type))
-                {
-                    return parser;
-                }
-            }
-            return null;
+            return Parsers.FirstOrDefault(_p => _p.CanParse(_type));
         }
 
         #endregion
@@ -354,47 +361,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 return;
             }
 
-            var fileValues = new Dictionary<string, string>();
-            try
-            {
-                string[] lines;
-                lock (FileLock)
-                {
-                    lines = File.ReadAllLines(path);
-                }
-
-                foreach (var line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
-                        continue;
-
-                    var equalsIndex = line.IndexOf('=');
-                    if (equalsIndex > 0)
-                    {
-                        var key = line.Substring(0, equalsIndex).Trim();
-                        var value = line.Substring(equalsIndex + 1);
-                        fileValues[key] = value;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ConfigLoader] Failed to read config file. Using default values. Error: {e.Message}");
-            }
-
-            foreach (var setting in Settings)
-            {
-                if (fileValues.TryGetValue(setting.Key, out var rawValue))
-                {
-                    setting.SetValueFromString(rawValue);
-                }
-                else
-                {
-                    setting.SetToDefault();
-                }
-            }
-
-            SaveSync();
+#if USE_YAML_CONFIG && HAVE_VYAML
+            LoadFromYamlSync(path);
+#else
+            LoadFromIniSync(path);
+#endif
+            SaveSync(); // Self-heal
         }
 
         /// <summary>
@@ -415,47 +387,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
                 return;
             }
 
-            var fileValues = new Dictionary<string, string>();
-            try
-            {
-                string[] lines;
-                lock (FileLock)
-                {
-                    lines = File.ReadAllLines(path);
-                }
-
-                foreach (var line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
-                        continue;
-
-                    var equalsIndex = line.IndexOf('=');
-                    if (equalsIndex > 0)
-                    {
-                        var key = line.Substring(0, equalsIndex).Trim();
-                        var value = line.Substring(equalsIndex + 1);
-                        fileValues[key] = value;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ConfigLoader] Failed to read config file. Using default values. Error: {e.Message}");
-            }
-
-            foreach (var setting in Settings)
-            {
-                if (fileValues.TryGetValue(setting.Key, out var rawValue))
-                {
-                    setting.SetValueFromString(rawValue);
-                }
-                else
-                {
-                    setting.SetToDefault();
-                }
-            }
-
-            await SaveAsync();
+#if USE_YAML_CONFIG && HAVE_VYAML
+            await LoadFromYamlAsync(path);
+#else
+            await LoadFromIniAsync(path);
+#endif
+            await SaveAsync(); // Self-heal
         }
 
         /// <summary>
@@ -467,39 +404,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
             StopWatching(); // Pause watcher to prevent infinite loop
             try
             {
-                var path = GetConfigPath();
-                var sb = new StringBuilder();
-                sb.AppendLine("# Application Configuration File");
-                sb.AppendLine($"# Last saved: {DateTime.Now}");
-
-                var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
-
-                foreach (var group in groupedSettings)
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"#==================================================");
-                    sb.AppendLine($"# :: {group.Key} Settings");
-                    sb.AppendLine($"#==================================================");
-
-                    foreach (var setting in group.OrderBy(_s => _s.Key))
-                    {
-                        if (!string.IsNullOrEmpty(setting.Description))
-                        {
-                            sb.AppendLine($"# {setting.Description}");
-                        }
-                        sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
-                    }
-                }
-
-                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
-                lock (FileLock)
-                {
-                    File.WriteAllBytes(path, encodedText);
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ConfigLoader] Failed to save config file! Error: {e.Message}");
+#if USE_YAML_CONFIG && HAVE_VYAML
+                SaveToYamlSync(GetConfigPath());
+#else
+                SaveToIniSync(GetConfigPath());
+#endif
             }
             finally
             {
@@ -519,42 +428,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
             StopWatching(); // Pause watcher to prevent infinite loop
             try
             {
-                var path = GetConfigPath();
-                var sb = new StringBuilder();
-                sb.AppendLine("# Application Configuration File");
-                sb.AppendLine($"# Last saved: {DateTime.Now}");
-
-                var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
-
-                foreach (var group in groupedSettings)
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"#==================================================");
-                    sb.AppendLine($"# :: {group.Key} Settings");
-                    sb.AppendLine($"#==================================================");
-
-                    foreach (var setting in group.OrderBy(_s => _s.Key))
-                    {
-                        if (!string.IsNullOrEmpty(setting.Description))
-                        {
-                            sb.AppendLine($"# {setting.Description}");
-                        }
-                        sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
-                    }
-                }
-
-                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
-                await Task.Run(() =>
-                {
-                    lock (FileLock)
-                    {
-                        File.WriteAllBytes(path, encodedText);
-                    }
-                });
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ConfigLoader] Failed to save config file! Error: {e.Message}");
+#if USE_YAML_CONFIG && HAVE_VYAML
+                await SaveToYamlAsync(GetConfigPath());
+#else
+                await SaveToIniAsync(GetConfigPath());
+#endif
             }
             finally
             {
@@ -564,25 +442,154 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
         /// <summary>
         /// Resets all configuration settings to their default values as defined in the code
-        /// and then saves these defaults to the config.txt file, overwriting its current content.
+        /// and then saves these defaults to the config file, overwriting its current content.
         /// </summary>
         /// <returns>A task representing the asynchronous reset and save operation.</returns>
         public static async Task ResetToDefaultsAsync()
         {
-            // Ensure the loader is initialized so we know about all the settings.
             await InitializeAsync();
-
             Debug.Log("[ConfigLoader] Resetting all settings to their default values...");
             foreach (var setting in Settings)
             {
                 setting.SetToDefault();
             }
-
-            // Now, save these default values back to the file.
             await SaveAsync();
-            Debug.Log("[ConfigLoader] All settings have been reset to defaults and saved to config.txt.");
+            Debug.Log("[ConfigLoader] All settings have been reset to defaults and saved.");
         }
 
+        #endregion
+
+        #region INI Parsing
+        private static void LoadFromIniSync(string _path)
+        {
+            var fileValues = new Dictionary<string, string>();
+            try
+            {
+                string[] lines;
+                lock (FileLock) { lines = File.ReadAllLines(_path); }
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#")) continue;
+                    var equalsIndex = line.IndexOf('=');
+                    if (equalsIndex > 0)
+                    {
+                        fileValues[line.Substring(0, equalsIndex).Trim()] = line.Substring(equalsIndex + 1);
+                    }
+                }
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to read INI config. Error: {e.Message}"); }
+
+            foreach (var setting in Settings)
+            {
+                if (fileValues.TryGetValue(setting.Key, out var rawValue)) setting.SetValueFromString(rawValue);
+                else setting.SetToDefault();
+            }
+        }
+        // ReSharper disable once UnusedMember.Local
+        private static Task LoadFromIniAsync(string _path) { LoadFromIniSync(_path); return Task.CompletedTask; }
+
+        // ReSharper disable once UnusedMember.Local
+        private static void SaveToIniSync(string _path)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# Last saved: {DateTime.Now}");
+            var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+            foreach (var group in groupedSettings)
+            {
+                sb.AppendLine($"\n#==================================================");
+                sb.AppendLine($"# :: {group.Key} Settings");
+                sb.AppendLine($"#==================================================");
+                foreach (var setting in group.OrderBy(_s => _s.Key))
+                {
+                    if (!string.IsNullOrEmpty(setting.Description)) sb.AppendLine($"# {setting.Description}");
+                    sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
+                }
+            }
+            try
+            {
+                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
+                lock (FileLock) { File.WriteAllBytes(_path, encodedText); }
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to save INI config! Error: {e.Message}"); }
+        }
+        // ReSharper disable once UnusedMember.Local
+        private static async Task SaveToIniAsync(string _path)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# Last saved: {DateTime.Now}");
+            var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+            foreach (var group in groupedSettings)
+            {
+                sb.AppendLine($"\n#==================================================");
+                sb.AppendLine($"# :: {group.Key} Settings");
+                sb.AppendLine($"#==================================================");
+                foreach (var setting in group.OrderBy(_s => _s.Key))
+                {
+                    if (!string.IsNullOrEmpty(setting.Description)) sb.AppendLine($"# {setting.Description}");
+                    sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
+                }
+            }
+            try
+            {
+                var encodedText = Encoding.UTF8.GetBytes(sb.ToString());
+                await Task.Run(() => { lock (FileLock) { File.WriteAllBytes(_path, encodedText); } });
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to save INI config! Error: {e.Message}"); }
+        }
+        #endregion
+
+        #region YAML Parsing
+#if HAVE_VYAML
+        private static void LoadFromYamlSync(string _path)
+        {
+            Dictionary<string, object> yamlData;
+            try
+            {
+                byte[] yamlBytes;
+                lock (FileLock) { yamlBytes = File.ReadAllBytes(_path); }
+                yamlData = YamlSerializer.Deserialize<Dictionary<string, object>>(yamlBytes) ?? new Dictionary<string, object>();
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to read YAML config. Error: {e.Message}"); yamlData = new Dictionary<string, object>(); }
+
+            foreach (var setting in Settings)
+            {
+                // A more complex implementation could handle nesting based on GroupName
+                if (yamlData.TryGetValue(setting.Key, out var value)) setting.SetValueFromString(value?.ToString() ?? "");
+                else setting.SetToDefault();
+            }
+        }
+        private static Task LoadFromYamlAsync(string _path) { LoadFromYamlSync(_path); return Task.CompletedTask; }
+
+        private static void SaveToYamlSync(string _path)
+        {
+            var data = new Dictionary<string, object>();
+            foreach (var setting in Settings)
+            {
+                // A more complex implementation could build a nested dictionary based on GroupName
+                data[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
+            }
+            try
+            {
+                var yamlBytes = YamlSerializer.Serialize(data).ToArray();
+                lock (FileLock) { File.WriteAllBytes(_path, yamlBytes); }
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to save YAML config! Error: {e.Message}"); }
+        }
+        private static async Task SaveToYamlAsync(string _path)
+        {
+            var data = new Dictionary<string, object>();
+            foreach (var setting in Settings)
+            {
+                data[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
+            }
+            try
+            {
+                var yamlBytes = YamlSerializer.Serialize(data).ToArray();
+                await Task.Run(() => { lock (FileLock) { File.WriteAllBytes(_path, yamlBytes); } });
+            }
+            catch (Exception e) { Debug.LogError($"[ConfigLoader] Failed to save YAML config! Error: {e.Message}"); }
+        }
+#endif
         #endregion
 
         #region File Watching
@@ -607,7 +614,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
                 Application.quitting += StopWatching;
 
-                Debug.Log("[ConfigLoader] Started watching config.txt for changes.");
+                Debug.Log("[ConfigLoader] Started watching config file for changes.");
             }
             catch (Exception e)
             {
@@ -634,7 +641,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
             _Watcher.Dispose();
             _Watcher = null;
             Application.quitting -= StopWatching;
-            Debug.Log("[ConfigLoader] Stopped watching config.txt.");
+            Debug.Log("[ConfigLoader] Stopped watching config file.");
 #endif
         }
 

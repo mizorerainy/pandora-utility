@@ -9,6 +9,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MizoreRainy.Pandora.ConfigUtility;
 using MizoreRainy.Pandora.ConfigUtility.Editor;
@@ -193,6 +194,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
             _ScrollPosition = EditorGUILayout.BeginScrollView(_ScrollPosition);
 
+            // Reset the invalid flag before redrawing all fields.
+            _IsAnyFieldInvalid = false;
+
             foreach (var group in _GroupedSettings)
             {
                 _GroupFoldouts[group.Key] = EditorGUILayout.Foldout(_GroupFoldouts[group.Key], group.Key, true, EditorStyles.foldoutHeader);
@@ -202,6 +206,11 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
                     foreach (var setting in group.Value)
                     {
                         DrawSetting(setting);
+                        // Aggregate the validity of all fields.
+                        if (!setting.IsValid)
+                        {
+                            _IsAnyFieldInvalid = true;
+                        }
                     }
                     EditorGUI.indentLevel--;
                 }
@@ -221,7 +230,8 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
             if (GUILayout.Button("Reset to Defaults"))
             {
-                if (EditorUtility.DisplayDialog("Reset All to Defaults?", "This will overwrite config.txt with the default values defined in your code. This cannot be undone.", "Reset", "Cancel"))
+                var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+                if (EditorUtility.DisplayDialog("Reset All to Defaults?", $"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.", "Reset", "Cancel"))
                 {
                     ResetToDefaultsAndNotify();
                 }
@@ -231,34 +241,25 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
         /// <summary>
         /// Saves the current configuration settings asynchronously and displays a notification upon success.
-        /// If an error occurs during the save process, it is silently ignored.
         /// </summary>
-        /// <remarks>
-        /// This method uses the <c>ConfigLoader.SaveAsync</c> method to persist changes to the configuration file.
-        /// After saving, a success dialog box is displayed to inform the user of the successful operation.
-        /// Any exceptions encountered during this process are caught and ignored.
-        /// </remarks>
         private async void SaveChangesAndNotify()
         {
+            GUI.FocusControl(null);
             try
             {
                 await ConfigLoader.SaveAsync();
-                EditorUtility.DisplayDialog("Success", "Configuration saved successfully to config.txt.", "OK");
+                var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+                EditorUtility.DisplayDialog("Success", $"Configuration saved successfully to {configFileName}.", "OK");
             }
-            catch (Exception)
-            {
-                // Ignore
-            }
+            catch (Exception) { /* Ignore */ }
         }
 
         /// <summary>
         /// Resets all configuration settings to their default values and notifies the user upon completion.
-        /// This method calls the ResetToDefaultsAsync function from the ConfigLoader to reset the settings,
-        /// refreshes the settings displayed in the editor, and repaints the editor window. If the reset
-        /// is successful, a success dialog is displayed; otherwise, errors are silently ignored.
         /// </summary>
         private async void ResetToDefaultsAndNotify()
         {
+            GUI.FocusControl(null);
             try
             {
                 await ConfigLoader.ResetToDefaultsAsync();
@@ -266,34 +267,26 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
                 Repaint();
                 EditorUtility.DisplayDialog("Success", "Configuration has been reset to defaults.", "OK");
             }
-            catch (Exception)
-            {
-                // Ignore
-            }
+            catch (Exception) { /* Ignore */ }
         }
 
         /// <summary>
         /// Validates all configuration fields within the editor window.
         /// </summary>
-        /// <remarks>
-        /// This method iterates over all grouped settings and checks if any field is invalid.
-        /// The result is stored in a private boolean field to determine if any settings require correction.
-        /// </remarks>
         private void ValidateAllFields()
         {
+            if (_GroupedSettings == null) return;
             _IsAnyFieldInvalid = _GroupedSettings.Values.SelectMany(_list => _list).Any(_s => !_s.IsValid);
         }
 
         /// <summary>
         /// Draws a single configuration setting in the editor interface, including validation and error handling.
         /// </summary>
-        /// <param name="_setting">The configuration setting to be displayed and modified, including its metadata, current value, and validation state.</param>
+        /// <param name="_setting">The configuration setting to be displayed and modified.</param>
         private void DrawSetting(DisplaySetting _setting)
         {
             var entry = _setting.Entry;
             var label = new GUIContent(entry.Key, entry.Description);
-
-            EditorGUI.BeginChangeCheck();
 
             var originalColor = GUI.backgroundColor;
             if (!_setting.IsValid)
@@ -306,12 +299,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
             GUI.backgroundColor = originalColor;
 
-            if (EditorGUI.EndChangeCheck())
-            {
-                // If a change occurred, re-validate all fields to update the save button state
-                ValidateAllFields();
-            }
-
             if (!_setting.IsValid)
             {
                 EditorGUILayout.HelpBox(_setting.ErrorMessage, MessageType.Error);
@@ -322,36 +309,50 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
         /// Draws the appropriate UI field for a configuration entry based on its type.
         /// </summary>
         /// <param name="_setting">The setting containing the configuration entry to be drawn and its current state.</param>
-        /// <param name="_label">The label used for the UI field, typically displaying the key and description of the configuration entry.</param>
+        /// <param name="_label">The label used for the UI field.</param>
         private void DrawFieldForType(DisplaySetting _setting, GUIContent _label)
         {
             var entry = _setting.Entry;
             object newValue = null;
 
+            EditorGUI.BeginChangeCheck();
+
             var parser = ConfigLoader.GetParserForType(entry.ValueType);
             if (parser is IConfigEditorParser editorParser)
             {
                 newValue = editorParser.DrawEditorGui(_label, _setting.CurrentValue);
+                _setting.IsValid = true; // Assume custom drawers are always valid
             }
             else
             {
                 if (entry.ValueType == typeof(string))
                 {
-                    _setting.RawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    newValue = _setting.RawValue;
+                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+                    if (newRawValue != _setting.RawValue)
+                    {
+                        _setting.RawValue = newRawValue;
+                        newValue = newRawValue;
+                    }
                     _setting.IsValid = true;
                 }
                 else if (entry.ValueType == typeof(bool))
                 {
                     newValue = EditorGUILayout.Toggle(_label, (bool)_setting.CurrentValue);
-                    _setting.IsValid = true;
                 }
                 else if (entry.ValueType == typeof(int))
                 {
-                    _setting.RawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    if (int.TryParse(_setting.RawValue, out int parsedInt))
+                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+                    if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
                     {
-                        newValue = parsedInt;
+                        _setting.RawValue = newRawValue;
+                    }
+
+                    if (int.TryParse(_setting.RawValue, out var parsedInt))
+                    {
+                        if (!parsedInt.Equals(_setting.CurrentValue))
+                        {
+                           newValue = parsedInt;
+                        }
                         _setting.IsValid = true;
                     }
                     else
@@ -362,10 +363,18 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
                 }
                 else if (entry.ValueType == typeof(float))
                 {
-                    _setting.RawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
-                    if (float.TryParse(_setting.RawValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedFloat))
+                    var newRawValue = EditorGUILayout.TextField(_label, _setting.RawValue);
+                    if (!string.Equals(newRawValue, _setting.RawValue, StringComparison.CurrentCulture))
                     {
-                        newValue = parsedFloat;
+                        _setting.RawValue = newRawValue;
+                    }
+
+                    if (float.TryParse(_setting.RawValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsedFloat))
+                    {
+                        if (!parsedFloat.Equals(_setting.CurrentValue))
+                        {
+                            newValue = parsedFloat;
+                        }
                         _setting.IsValid = true;
                     }
                     else
@@ -377,23 +386,24 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
                 else if (entry.ValueType == typeof(Vector3))
                 {
                     newValue = EditorGUILayout.Vector3Field(_label, (Vector3)_setting.CurrentValue);
-                    _setting.IsValid = true;
                 }
                 else if (entry.ValueType == typeof(Color))
                 {
                     newValue = EditorGUILayout.ColorField(_label, (Color)_setting.CurrentValue);
-                    _setting.IsValid = true;
                 }
                 else if (entry.ValueType.IsEnum)
                 {
                     newValue = EditorGUILayout.EnumPopup(_label, (Enum)_setting.CurrentValue);
-                    _setting.IsValid = true;
                 }
                 else
                 {
                     EditorGUILayout.LabelField(_label, new GUIContent($"Unsupported Type: {entry.ValueType.Name}", "To edit this type, implement IConfigEditorParser on its parser."));
-                    _setting.IsValid = true; // Assume valid if we can't edit it.
                 }
+            }
+
+            if (EditorGUI.EndChangeCheck() && newValue != null)
+            {
+                _setting.IsValid = true; // Assume valid for non-text fields that changed
             }
 
             if (newValue != null && _setting.IsValid)
@@ -401,7 +411,10 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
                 var setValueMethod = entry.GetType().GetMethod("SetValue");
                 setValueMethod?.Invoke(entry, new[] { newValue });
                 _setting.CurrentValue = newValue;
-                _setting.RawValue = newValue.ToString();
+                if(entry.ValueType != typeof(Vector3) && entry.ValueType != typeof(Color))
+                {
+                    _setting.RawValue = newValue.ToString();
+                }
             }
         }
     }
