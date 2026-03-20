@@ -1,3 +1,4 @@
+using MizoreRainy.Pandora;
 // =================================================================================
 // File: ConfigLoader.cs
 // Author: MizoreRainy
@@ -21,7 +22,7 @@ using VYaml.Serialization;
 #endif
 
 // This attribute grants the specified editor assembly access to this assembly's internal members.
-[assembly: InternalsVisibleTo("MizoreRainy.Pandora.Editor.ConfigUtility")]
+[assembly: InternalsVisibleTo("MizoreRainy.Pandora.Editor.Config")]
 
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.ConfigUtility
@@ -136,8 +137,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		private static void AutoInitialize()
 		{
 #if CONFIG_LOAD_ASYNC
-	  // Use async initialization - faster startup, but config values may not be immediately available
-	  _ = InitializeAsync(); // Fire and forget
+			// Use async initialization - faster startup, but config values may not be immediately available
+			_ = InitializeAsync(); // Fire and forget
 #else
 			// Use synchronous initialization - ensures config values are ready before scene objects start
 			Initialize();
@@ -174,7 +175,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			try
 			{
 				_MainThreadContext = SynchronizationContext.Current;
-				Debug.Log($"<color=yellow>[ConfigLoader]</color> Initializing synchronously... Config file path: {GetConfigPath()}");
+				PandoraLogger.LogConfig($"Initializing synchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
 				LoadFromFileSync();
@@ -185,7 +186,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				Debug.Log($"<color=yellow>[ConfigLoader]</color> Synchronous initialization complete. {Settings.Count} settings loaded.");
+				PandoraLogger.LogConfig($"Synchronous initialization complete. {Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -200,7 +201,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 
 				if (!(e is InvalidOperationException))
-					Debug.LogError($"<color=yellow>[ConfigLoader]</color> Synchronous initialization failed: {e.Message}");
+					PandoraLogger.LogConfigError($"Synchronous initialization failed: {e.Message}");
 				throw;
 			}
 		}
@@ -245,7 +246,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			try
 			{
 				_MainThreadContext = SynchronizationContext.Current;
-				Debug.Log($"<color=yellow>[ConfigLoader]</color> Initializing asynchronously... Config file path: {GetConfigPath()}");
+				PandoraLogger.LogConfig($"Initializing asynchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
 				await LoadFromFileAsync();
@@ -256,7 +257,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				Debug.Log($"<color=yellow>[ConfigLoader]</color> Asynchronous initialization complete. {Settings.Count} settings loaded.");
+				PandoraLogger.LogConfig($"Asynchronous initialization complete. {Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -272,7 +273,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 
 				if (!(e is InvalidOperationException))
-					Debug.LogError($"<color=yellow>[ConfigLoader]</color> Asynchronous initialization failed: {e.Message}");
+					PandoraLogger.LogConfigError($"Asynchronous initialization failed: {e.Message}");
 				throw;
 			}
 		}
@@ -349,7 +350,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			if (_IsInitialized)
 			{
-				Debug.LogError("<color=yellow>[ConfigLoader]</color> Parsers must be registered before initialization.");
+				PandoraLogger.LogConfigError("Parsers must be registered before initialization.");
 				return;
 			}
 
@@ -387,7 +388,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			var path = GetConfigPath();
 			if (!File.Exists(path))
 			{
-				Debug.Log("<color=yellow>[ConfigLoader]</color> Config file not found. Creating a new one with default values.");
+				PandoraLogger.LogConfig("Config file not found. Creating a new one with default values.");
 				SaveSync();
 				return;
 			}
@@ -415,7 +416,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			var path = GetConfigPath();
 			if (!File.Exists(path))
 			{
-				Debug.Log("<color=yellow>[ConfigLoader]</color> Config file not found. Creating a new one with default values.");
+				PandoraLogger.LogConfig("Config file not found. Creating a new one with default values.");
 				await SaveAsync();
 				return;
 			}
@@ -495,12 +496,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			// Ensure the loader is initialized so we know about all the settings.
 			await InitializeAsync();
 
-			Debug.Log("<color=yellow>[ConfigLoader]</color> Resetting all settings to their default values...");
+			PandoraLogger.LogConfig("Resetting all settings to their default values...");
 			foreach (var setting in Settings) setting.SetToDefault();
 
 			// Now, save these default values back to the file.
 			await SaveAsync();
-			Debug.Log("<color=yellow>[ConfigLoader]</color> All settings have been reset to defaults and saved.");
+			PandoraLogger.LogConfig("All settings have been reset to defaults and saved.");
 		}
 
 		#endregion
@@ -537,7 +538,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to read INI config. Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to read INI config. Error: {e.Message}");
 			}
 
 			foreach (var setting in Settings)
@@ -595,7 +596,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save INI config! Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to save INI config! Error: {e.Message}");
 			}
 		}
 
@@ -636,7 +637,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save INI config! Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to save INI config! Error: {e.Message}");
 			}
 		}
 
@@ -671,7 +672,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to read YAML config. Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to read YAML config. Error: {e.Message}");
 				yamlData = new Dictionary<string, object>();
 			}
 
@@ -720,7 +721,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save YAML config! Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to save YAML config! Error: {e.Message}");
 			}
 		}
 
@@ -746,7 +747,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save YAML config! Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to save YAML config! Error: {e.Message}");
 			}
 		}
 
@@ -911,12 +912,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 				Application.quitting += StopWatching;
 
-				Debug.Log("<color=yellow>[ConfigLoader]</color> Started watching config file for changes.");
+				PandoraLogger.LogConfig("Started watching config file for changes.");
 			}
 			catch (Exception e)
 			{
-				Debug.LogError(
-					$"<color=yellow>[ConfigLoader]</color> Failed to start file watcher. Live-reloading will be disabled. Error: {e.Message}");
+				PandoraLogger.LogConfigError($"Failed to start file watcher. Live-reloading will be disabled. Error: {e.Message}");
 				_Watcher?.Dispose();
 				_Watcher = null;
 			}
@@ -940,7 +940,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			_Watcher.Dispose();
 			_Watcher = null;
 			Application.quitting -= StopWatching;
-			Debug.Log("<color=yellow>[ConfigLoader]</color> Stopped watching config file.");
+			PandoraLogger.LogConfig("Stopped watching config file.");
 #endif
 		}
 
@@ -963,7 +963,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			{
 				try
 				{
-					Debug.Log("<color=yellow>[ConfigLoader]</color> File change detected. Reloading settings...");
+					PandoraLogger.LogConfig("File change detected. Reloading settings...");
 					await LoadFromFileAsync();
 				}
 				finally
@@ -1072,8 +1072,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 						if (GetParserForType(field.FieldType.GetGenericArguments()[0]) == null &&
 							!IsPrimitiveOrEnum(field.FieldType.GetGenericArguments()[0]))
-							Debug.LogError(
-								$"<color=yellow>[ConfigLoader]</color> Error: The type '{field.FieldType.GetGenericArguments()[0].Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
+							PandoraLogger.LogConfigError($"Error: The type '{field.FieldType.GetGenericArguments()[0].Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
 								"To add support, create a class that implements IConfigValueParser and register it with ConfigLoader.RegisterParser().");
 					}
 				}

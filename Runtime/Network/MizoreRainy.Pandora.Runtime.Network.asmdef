@@ -1,0 +1,23 @@
+{
+    "name": "MizoreRainy.Pandora.Runtime.Network",
+    "rootNamespace": "MizoreRainy.Pandora.Network",
+    "references": [
+        "UniTask",
+        "UniTask.Linq"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "2.0.0",
+            "define": "HAVE_CYSHARP_UNITASK"
+        }
+    ],
+    "noEngineReferences": false
+}
