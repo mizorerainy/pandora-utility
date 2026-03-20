@@ -53,6 +53,9 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		/// </remarks>
 		private bool _ConfigLoaderAutoInit;
 
+		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
+		private bool _ConfigLoaderAsyncInit;
+
 		/// <summary>
 		///     Represents the editor preference key used to store and retrieve
 		///     whether the YAML format is enabled for configuration files in the Pandora package.
@@ -88,6 +91,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		{
 			// Load saved settings
 			_ConfigLoaderAutoInit = EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false);
+			_ConfigLoaderAsyncInit = EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false);
 			_UseYaml = EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false);
 
 			CheckYamlPackageStateAsync();
@@ -122,11 +126,21 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				EditorGUI.BeginDisabledGroup(true);
 			}
 
-			EditorGUILayout.LabelField("Pandora Module Settings", EditorStyles.boldLabel);
-			EditorGUILayout.Space();
+			EditorGUILayout.Space(10);
+			var mainHeaderStyle = new GUIStyle(EditorStyles.largeLabel) { fontStyle = FontStyle.Bold, fontSize = 16 };
+			EditorGUILayout.LabelField("Pandora Module Settings", mainHeaderStyle);
+			EditorGUILayout.Space(10);
+
+			var headerStyle = new GUIStyle(EditorStyles.largeLabel) { fontStyle = FontStyle.Bold };
 
 			// --- Config Loader Section ---
-			EditorGUILayout.LabelField("Config Loader", EditorStyles.boldLabel);
+			EditorGUILayout.BeginVertical(GUI.skin.box);
+			EditorGUILayout.LabelField("Config Loader", headerStyle);
+
+			Rect r1 = EditorGUILayout.GetControlRect(false, 1);
+			EditorGUI.DrawRect(r1, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+			EditorGUILayout.Space(5);
+
 			EditorGUI.BeginChangeCheck();
 			_ConfigLoaderAutoInit = EditorGUILayout.Toggle(
 				new GUIContent("Enable Auto-Initialization",
@@ -144,10 +158,31 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				"Auto-Initialization is recommended for most projects. Disable this only if you need full control over the startup sequence.",
 				MessageType.Info);
 
-			EditorGUILayout.Space();
+			EditorGUI.BeginDisabledGroup(!_ConfigLoaderAutoInit);
+			EditorGUI.BeginChangeCheck();
+			_ConfigLoaderAsyncInit = EditorGUILayout.Toggle(
+				new GUIContent("Enable Async Initialization",
+					"If enabled, the ConfigLoader will initialize asynchronously. Faster startup, but values may not be immediately available."),
+				_ConfigLoaderAsyncInit);
+			if (EditorGUI.EndChangeCheck())
+			{
+				EditorPrefs.SetBool(_CONFIG_ASYNC_INIT_KEY, _ConfigLoaderAsyncInit);
+				PackageSetup.UpdateScriptingDefines();
+				Debug.Log($"Config Loader Async-Initialization set to: {_ConfigLoaderAsyncInit}");
+				AssetDatabase.Refresh();
+			}
+			EditorGUI.EndDisabledGroup();
+
+			EditorGUILayout.EndVertical();
+			EditorGUILayout.Space(10);
 
 			// --- YAML Configuration Section ---
-			EditorGUILayout.LabelField("Configuration Format", EditorStyles.boldLabel);
+			EditorGUILayout.BeginVertical(GUI.skin.box);
+			EditorGUILayout.LabelField("Configuration Format", headerStyle);
+
+			Rect r2 = EditorGUILayout.GetControlRect(false, 1);
+			EditorGUI.DrawRect(r2, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+			EditorGUILayout.Space(5);
 
 			if (!_IsYamlInstalled)
 			{
@@ -160,7 +195,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			EditorGUI.BeginChangeCheck();
 			_UseYaml = EditorGUILayout.Toggle(
 				new GUIContent("Use YAML Format (.yaml)",
-					"If enabled, the ConfigLoader will use 'config.yaml' instead of ' config.ini'. This requires the VYaml package."),
+					"If enabled, the ConfigLoader will use 'config.yaml' instead of 'config.ini'. This requires the VYaml package."),
 				_UseYaml);
 			if (EditorGUI.EndChangeCheck())
 			{
@@ -171,6 +206,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			}
 
 			EditorGUI.EndDisabledGroup();
+
+			EditorGUILayout.EndVertical();
 
 			if (EditorApplication.isCompiling) EditorGUI.EndDisabledGroup();
 		}
@@ -234,6 +271,9 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     scripting define a symbol list, based on user preferences or package settings.
 		/// </remarks>
 		private const string _CONFIG_LOADER_AUTO_INIT_SYMBOL = "CONFIG_LOADER_AUTO_INIT";
+
+		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
+		private const string _CONFIG_LOADER_ASYNC_SYMBOL = "CONFIG_LOAD_ASYNC";
 
 		/// <summary>
 		///     Specifies the EditorPrefs key used to determine whether YAML-based configuration loading
@@ -362,6 +402,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			// FIX: Removed manual handling for package defines, as versionDefines in .asmdef is the correct approach.
 			definesChanged |= SetDefine(ref definesList, _CONFIG_LOADER_AUTO_INIT_SYMBOL,
 				EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false));
+			definesChanged |= SetDefine(ref definesList, _CONFIG_LOADER_ASYNC_SYMBOL,
+				EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false) && EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false));
 			definesChanged |= SetDefine(ref definesList, _CONFIG_USE_YAML_SYMBOL,
 				EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false));
 

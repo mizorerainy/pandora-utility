@@ -30,6 +30,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	///     Provides functionality for initializing, managing, and interacting with application configuration settings.
 	///     This class includes methods for loading, saving, runtime updates, and monitoring configuration files.
 	/// </summary>
+	[DefaultExecutionOrder(-9999)]
 	public static class ConfigLoader
 	{
 		#region Fields
@@ -131,7 +132,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		///     To enable asynchronous initialization,
 		///     include "CONFIG_LOAD_ASYNC" in the Scripting Define Symbols.
 		/// </summary>
-		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		private static void AutoInitialize()
 		{
 #if CONFIG_LOAD_ASYNC
