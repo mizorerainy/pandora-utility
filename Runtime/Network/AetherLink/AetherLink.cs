@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using MizoreRainy.Pandora;
 using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
@@ -67,7 +68,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 							// No instance found, create a new one
 							var go = new GameObject("[AetherLink Singleton]");
 							_Instance = go.AddComponent<AetherLink>();
-							Debug.Log("[AetherLink] An instance was automatically created.");
+							PandoraLogger.LogNetwork("An instance was automatically created.");
 						}
 					}
 
@@ -108,32 +109,32 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 			if (CustomTypeIds.TryGetValue(type, out var oldId))
 				throw new InvalidOperationException(
-					$"[AetherLink] Type {type.Name} is already registered with ID {oldId}. Cannot register the same type twice.");
+					$"Type {type.Name} is already registered with ID {oldId}. Cannot register the same type twice.");
 
 			if (CustomTypeFactories.TryGetValue(_typeId, out var factory))
 			{
 				var oldType = factory().GetType();
 				if (_override)
 				{
-					Debug.LogWarning(
-						$"[AetherLink] Type ID {_typeId} is already registered to {oldType.Name}. Overwriting with {type.Name}.");
+					PandoraLogger.LogNetworkWarning(
+						$"Type ID {_typeId} is already registered to {oldType.Name}. Overwriting with {type.Name}.");
 					CustomTypeIds.Remove(oldType);
 				}
 				else
 				{
 					throw new InvalidOperationException(
-						$"[AetherLink] Type ID {_typeId} is already registered to {oldType.Name}. Cannot register the same ID twice.");
+						$"Type ID {_typeId} is already registered to {oldType.Name}. Cannot register the same ID twice.");
 				}
 			}
 
 			CustomTypeIds[type] = _typeId;
 			CustomTypeFactories[_typeId] = () => new T();
-			Debug.Log($"[AetherLink] Registered custom type '{type.Name}' with ID {_typeId}.");
+			PandoraLogger.LogNetwork($"Registered custom type '{type.Name}' with ID {_typeId}.");
 		}
 
 		#endregion
 
-		#region Nested Classes & Structs
+		#region Nested Types
 
 		/// <summary>
 		///     Contains all configuration for the AetherLink component. Can be set in the Inspector or from code.
@@ -153,12 +154,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				"If true, a Slave will attempt to connect to the same machine (localhost) if no Master is found via UDP broadcast. Recommended for testing.")]
 			public bool AllowSameMachineConnection;
 
-			[Header("Network Ports")] [Range(1024, 65535)]
+			[Header("Network Ports")]
+			[Range(1024, 65535)]
 			public int UdpBroadcastPort;
 
 			[Range(1024, 65535)] public int TcpConnectionPort;
 
-			[Header("Timings (Milliseconds)")] [Range(100, 5000)]
+			[Header("Timings (Milliseconds)")]
+			[Range(100, 5000)]
 			public int HandshakeInterval;
 
 			[Range(100, 5000)] public int HeartbeatInterval;
@@ -169,7 +172,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			[Range(1024, 64 * 1024 * 1024)]
 			public int MaxPacketSize;
 
-			[Tooltip("Buffer size for TCP operations")] [Range(1024, 64 * 1024)]
+			[Tooltip("Buffer size for TCP operations")]
+			[Range(1024, 64 * 1024)]
 			public int TcpBufferSize;
 
 			[Header("Debugging")] public bool DebugUdpMessages;
@@ -242,7 +246,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					}
 					catch (Exception ex)
 					{
-						Debug.LogError($"[AetherLink] Failed to read objects from packet: {ex.Message}");
+						PandoraLogger.LogNetworkError($"Failed to read objects from packet: {ex.Message}");
 					}
 				}
 
@@ -301,7 +305,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Enums and Constants
+		#region Constants
 
 		/// <summary>
 		///     Defines the operational role of the AetherLink instance.
@@ -336,7 +340,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Public Properties
+		#region Properties
 
 		/// <summary>Gets a value indicating whether the link is currently running (i.e., StartLink has been called).</summary>
 		public bool IsRunning { get; private set; }
@@ -399,7 +403,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Public Events (For Inspector)
+		#region Events
 
 		/// <summary>Fired when a TCP connection is successfully established. Use this for both Inspector and code subscriptions.</summary>
 		[Tooltip("Fired when a TCP connection is successfully established.")]
@@ -415,7 +419,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Managed Handlers API (Recommended)
+		#region Public API - Managed Handlers
 
 #if HAVE_CYSHARP_UNITASK
 		/// <summary>
@@ -436,7 +440,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					}
 					catch (Exception ex)
 					{
-						Debug.LogError($"[AetherLink] Error in user-provided connection handler: {ex}");
+						PandoraLogger.LogNetworkError($"Error in user-provided connection handler: {ex}");
 					}
 				}, _cancellationToken);
 			}).Forget(); // .Forget() is safe here as UniTask logs the exception.
@@ -459,7 +463,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					}
 					catch (Exception ex)
 					{
-						Debug.LogError($"[AetherLink] Error in user-provided disconnection handler: {ex}");
+						PandoraLogger.LogNetworkError($"Error in user-provided disconnection handler: {ex}");
 					}
 				}, _cancellationToken);
 			}).Forget();
@@ -482,8 +486,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					}
 					catch (Exception ex)
 					{
-						Debug.LogError(
-							$"[AetherLink] Error in user-provided data handler for header {_packet.Header}: {ex}");
+						PandoraLogger.LogNetworkError(
+							$"Error in user-provided data handler for header {_packet.Header}: {ex}");
 					}
 				}, _cancellationToken);
 			}).Forget();
@@ -509,8 +513,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					}
 					catch (Exception ex)
 					{
-						Debug.LogError(
-							$"[AetherLink] Error in user-provided data handler for header {_packet.Header}: {ex}");
+						PandoraLogger.LogNetworkError(
+							$"Error in user-provided data handler for header {_packet.Header}: {ex}");
 					}
 				}, _cancellationToken);
 			}).Forget();
@@ -519,7 +523,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Advanced Async Stream API
+		#region Public API - Async Streams
 
 #if HAVE_CYSHARP_UNITASK
 		/// <summary>
@@ -582,7 +586,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Private State
+		#region Fields
 
 		[SerializeField] private Settings m_Settings = Settings.Default;
 #if HAVE_CYSHARP_UNITASK
@@ -621,8 +625,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			if (_Instance != null && _Instance != this)
 			{
-				Debug.LogWarning(
-					"[AetherLink] Another instance of AetherLink was found and is being destroyed. Only one instance should exist.");
+				PandoraLogger.LogNetworkWarning(
+					"Another instance of AetherLink was found and is being destroyed. Only one instance should exist.");
 				Destroy(gameObject);
 				return;
 			}
@@ -670,7 +674,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Public Control Methods
+		#region Public API
 
 		/// <summary>
 		///     Initializes the link with custom settings. Must be called before starting if not using Inspector values.
@@ -680,7 +684,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			if (IsRunning)
 			{
-				Debug.LogWarning("[AetherLink] Cannot initialize while the link is running. Please stop it first.");
+				PandoraLogger.LogNetworkWarning("Cannot initialize while the link is running. Please stop it first.");
 				return;
 			}
 
@@ -694,17 +698,17 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			if (IsRunning)
 			{
-				Debug.LogWarning("[AetherLink] Link is already running.");
+				PandoraLogger.LogNetworkWarning("Link is already running.");
 				return;
 			}
 
 			if (_IsDisposed)
 			{
-				Debug.LogError("[AetherLink] Cannot start link on disposed component.");
+				PandoraLogger.LogNetworkError("Cannot start link on disposed component.");
 				return;
 			}
 
-			Debug.Log($"[AetherLink] Starting in {m_Settings.LinkMode} mode.");
+			PandoraLogger.LogNetwork($"Starting in {m_Settings.LinkMode} mode.");
 			IsRunning = true;
 			_InstanceId = Guid.NewGuid();
 #if HAVE_CYSHARP_UNITASK
@@ -721,7 +725,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			if (!IsRunning) return;
 
-			Debug.Log("[AetherLink] Stopping link...");
+			PandoraLogger.LogNetwork("Stopping link...");
 			IsRunning = false;
 			if (_IsTcpConnected) _Statistics.DisconnectionCount++;
 
@@ -770,7 +774,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AetherLink] Error during resource cleanup: {ex.Message}");
+				PandoraLogger.LogNetworkError($"Error during resource cleanup: {ex.Message}");
 			}
 		}
 
@@ -827,7 +831,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 			if (_data == null)
 			{
-				Debug.LogError("[AetherLink] Data array cannot be null.");
+				PandoraLogger.LogNetworkError("Data array cannot be null.");
 				return;
 			}
 
@@ -837,8 +841,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 				if (payload.Length > m_Settings.MaxPacketSize)
 				{
-					Debug.LogError(
-						$"[AetherLink] Packet size ({payload.Length}) exceeds maximum allowed size ({m_Settings.MaxPacketSize}).");
+					PandoraLogger.LogNetworkError(
+						$"Packet size ({payload.Length}) exceeds maximum allowed size ({m_Settings.MaxPacketSize}).");
 					return;
 				}
 
@@ -846,7 +850,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AetherLink] Failed to serialize or send data for header {_header}: {ex.Message}");
+				PandoraLogger.LogNetworkError($"Failed to serialize or send data for header {_header}: {ex.Message}");
 			}
 		}
 #endif
@@ -948,7 +952,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			if (!IsConnected || _TCPConnection == null)
 			{
-				Debug.LogWarning("[AetherLink] Cannot send data: Not connected");
+				PandoraLogger.LogNetworkWarning("Cannot send data: Not connected");
 				return;
 			}
 
@@ -964,25 +968,25 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				_Statistics.BytesSent += packet.Length;
 
 				if (m_Settings.DebugTcpMessages && _header != _TCP_CMD_HEARTBEAT)
-					Debug.Log($"[AetherLink] Sent TCP packet: Header={_header}, Size={packet.Length} bytes");
+					PandoraLogger.LogNetwork($"Sent TCP packet: Header={_header}, Size={packet.Length} bytes");
 			}
 			catch (ArgumentException ex)
 			{
-				Debug.LogError($"[AetherLink] Invalid packet data: {ex.Message}");
+				PandoraLogger.LogNetworkError($"Invalid packet data: {ex.Message}");
 			}
 			catch (IOException ex)
 			{
-				Debug.LogError($"[AetherLink] Network I/O error: {ex.Message}");
+				PandoraLogger.LogNetworkError($"Network I/O error: {ex.Message}");
 				await HandleDisconnection();
 			}
 			catch (ObjectDisposedException)
 			{
-				Debug.LogWarning("[AetherLink] Cannot send data: Connection disposed");
+				PandoraLogger.LogNetworkWarning("Cannot send data: Connection disposed");
 				await HandleDisconnection();
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AetherLink] Unexpected error sending data: {ex.Message}");
+				PandoraLogger.LogNetworkError($"Unexpected error sending data: {ex.Message}");
 				// Rethrow to allow the calling method to handle it
 				throw;
 			}
@@ -1011,7 +1015,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 			var payloadLength = (ushort)_payload.Length;
 			var totalPacketSize = MagicStartBytes.Length + _PAYLOAD_LENGTH_OFFSET + _HEADER_OFFSET + _payload.Length +
-			                      _CHECKSUM_OFFSET + MagicEndBytes.Length;
+								  _CHECKSUM_OFFSET + MagicEndBytes.Length;
 			var packet = new byte[totalPacketSize];
 
 			var offset = 0;
@@ -1103,7 +1107,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[AetherLink] Failed to initialize UDP client: {e.Message}");
+				PandoraLogger.LogNetworkError($"Failed to initialize UDP client: {e.Message}");
 				StopLink();
 				return;
 			}
@@ -1152,7 +1156,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				{
 					if (!IsConnectionValid(_TCPConnection))
 					{
-						Debug.Log("[AetherLink] TCP connection is no longer valid.");
+						PandoraLogger.LogNetwork("TCP connection is no longer valid.");
 						break;
 					}
 
@@ -1161,7 +1165,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					var magicStart = BitConverter.ToUInt16(magicBuffer, 0);
 					if (magicStart != _MAGIC_START)
 					{
-						Debug.LogError("[AetherLink] Invalid magic start. Disconnecting.");
+						PandoraLogger.LogNetworkError("Invalid magic start. Disconnecting.");
 						_Statistics.MalformedPackets++;
 						break;
 					}
@@ -1172,7 +1176,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 					if (payloadLength > m_Settings.MaxPacketSize)
 					{
-						Debug.LogError($"[AetherLink] Payload too large: {payloadLength}. Disconnecting.");
+						PandoraLogger.LogNetworkError($"Payload too large: {payloadLength}. Disconnecting.");
 						_Statistics.MalformedPackets++;
 						break;
 					}
@@ -1191,7 +1195,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					// Validate packet integrity
 					if (!ValidatePacketIntegrity(fullPacket))
 					{
-						Debug.LogError("[AetherLink] Packet integrity check failed. Dropping packet.");
+						PandoraLogger.LogNetworkError("Packet integrity check failed. Dropping packet.");
 						_Statistics.CorruptedPackets++;
 						continue;
 					}
@@ -1215,7 +1219,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					_Statistics.LastPacketTime = Time.time;
 
 					if (m_Settings.DebugTcpMessages)
-						Debug.Log($"[AetherLink] Received TCP packet: Header={header}, Size={fullPacket.Length} bytes");
+						PandoraLogger.LogNetwork($"Received TCP packet: Header={header}, Size={fullPacket.Length} bytes");
 
 					var response = new PacketResponse(header, payload, RemoteEndPoint);
 
@@ -1229,7 +1233,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 			catch (Exception ex)
 			{
-				if (!_token.IsCancellationRequested) Debug.LogError($"[AetherLink] TCP receive error: {ex.Message}");
+				if (!_token.IsCancellationRequested) PandoraLogger.LogNetworkError($"TCP receive error: {ex.Message}");
 			}
 			finally
 			{
@@ -1251,7 +1255,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		private bool ValidatePacketIntegrity(byte[] _packet)
 		{
 			const ushort minPacketSize = _MAGIC_OFFSET + _HEADER_OFFSET + _PAYLOAD_LENGTH_OFFSET + _CHECKSUM_OFFSET +
-			                             _MAGIC_OFFSET;
+										 _MAGIC_OFFSET;
 			if (_packet.Length < minPacketSize) return false; // Minimum packet size
 
 			var magicStart = BitConverter.ToUInt16(_packet, 0);
@@ -1283,7 +1287,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				if (!_client.Connected) return false;
 
 				return !_client.Client.Poll(_CONNECTION_VALIDATION_DELAY_MICRO_SEC, SelectMode.SelectRead) ||
-				       _client.Client.Available > 0;
+					   _client.Client.Available > 0;
 			}
 			catch
 			{
@@ -1326,15 +1330,15 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				}
 				catch (ArgumentOutOfRangeException ex)
 				{
-					Debug.LogError($"Invalid packet data: {ex.Message}");
+					PandoraLogger.LogNetworkError($"Invalid packet data: {ex.Message}");
 				}
 				catch (ArgumentException ex)
 				{
-					Debug.LogError($"Packet parsing failed: {ex.Message}");
+					PandoraLogger.LogNetworkError($"Packet parsing failed: {ex.Message}");
 				}
 				catch (Exception ex)
 				{
-					if (!_token.IsCancellationRequested) Debug.LogError($"[AetherLink] UDP listen error: {ex.Message}");
+					if (!_token.IsCancellationRequested) PandoraLogger.LogNetworkError($"UDP listen error: {ex.Message}");
 					break;
 				}
 		}
@@ -1348,15 +1352,15 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		private void HandleUdpMessage(byte _command, IPEndPoint _remoteEndPoint)
 		{
 			if (m_Settings.DebugUdpMessages)
-				Debug.Log($"[AetherLink] UDP Received: Command '0x{_command:X2}' from {_remoteEndPoint.Address}");
+				PandoraLogger.LogNetwork($"UDP Received: Command '0x{_command:X2}' from {_remoteEndPoint.Address}");
 
 			switch (_command)
 			{
 				case _UDP_CMD_HANDSHAKE:
 					if (m_Settings.LinkMode == Mode.Slave && !IsConnected)
 					{
-						Debug.Log(
-							$"[AetherLink] Master discovered at {_remoteEndPoint.Address}. Initiating TCP connection.");
+						PandoraLogger.LogNetwork(
+							$"Master discovered at {_remoteEndPoint.Address}. Initiating TCP connection.");
 						_IsUdpConnected = true;
 						TcpConnectToMaster(_remoteEndPoint.Address, _CancellationTokenSource.Token).Forget();
 					}
@@ -1424,7 +1428,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			catch (Exception ex)
 			{
 				if (!_token.IsCancellationRequested)
-					Debug.Log($"[AetherLink] Failed to connect to Master at {_masterIp}: {ex.Message}.");
+					PandoraLogger.LogNetwork($"Failed to connect to Master at {_masterIp}: {ex.Message}.");
 				client.Close();
 				client.Dispose();
 			}
@@ -1445,7 +1449,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			await UniTask.SwitchToMainThread();
 			if (!_IsTcpConnected) return;
 
-			Debug.Log("[AetherLink] Handling disconnection...");
+			PandoraLogger.LogNetwork("Handling disconnection...");
 			_IsTcpConnected = false;
 			_IsUdpConnected = false;
 			_Statistics.DisconnectionCount++;
@@ -1476,7 +1480,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			_TCPConnection = _client;
 			if (_TCPConnection.Client?.RemoteEndPoint is IPEndPoint remoteEndPoint)
 			{
-				Debug.Log($"[AetherLink] TCP connection established with {remoteEndPoint.Address}");
+				PandoraLogger.LogNetwork($"TCP connection established with {remoteEndPoint.Address}");
 				RemoteEndPoint = remoteEndPoint;
 				_IsUdpConnected = true;
 				_IsTcpConnected = true;
@@ -1515,13 +1519,13 @@ namespace MizoreRainy.Pandora.NetworkUtility
 						try
 						{
 							if (m_Settings.DebugUdpMessages)
-								Debug.Log("[AetherLink] Broadcasting UDP handshake packet...");
+								PandoraLogger.LogNetwork("Broadcasting UDP handshake packet...");
 							await _UDPClient.SendAsync(handshakeBytes, handshakeBytes.Length, broadcastEndpoint);
 						}
 						catch (Exception ex)
 						{
 							if (!_token.IsCancellationRequested)
-								Debug.LogError($"[AetherLink] UDP handshake broadcast error: {ex.Message}");
+								PandoraLogger.LogNetworkError($"UDP handshake broadcast error: {ex.Message}");
 						}
 
 					await UniTask.Delay(m_Settings.HandshakeInterval, cancellationToken: _token);
@@ -1529,7 +1533,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[AetherLink] UdpHandshakeBroadcastLoop error: {e.Message}");
+				PandoraLogger.LogNetworkError($"UdpHandshakeBroadcastLoop error: {e.Message}");
 				throw;
 			}
 		}
@@ -1570,7 +1574,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			{
 				if (IsConnected && Time.time - _LastHeartbeatTime > m_Settings.HeartbeatTimeout * _MS_TO_SEC_MULTIPLIER)
 				{
-					Debug.LogWarning("[AetherLink] Connection lost due to heartbeat timeout!");
+					PandoraLogger.LogNetworkWarning("Connection lost due to heartbeat timeout!");
 					await HandleDisconnection();
 				}
 
@@ -1633,7 +1637,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			{
 				if (!_token.IsCancellationRequested)
 				{
-					Debug.LogError($"[AetherLink] TCP listen error: {ex.Message}");
+					PandoraLogger.LogNetworkError($"TCP listen error: {ex.Message}");
 					StopLink();
 				}
 			}

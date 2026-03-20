@@ -1,7 +1,9 @@
 {
     "name": "MizoreRainy.Pandora.Editor.Build",
     "rootNamespace": "MizoreRainy.Pandora.Build.Editor",
-    "references": [],
+    "references": [
+        "MizoreRainy.Pandora.Runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],

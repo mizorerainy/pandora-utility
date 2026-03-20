@@ -1,5 +1,6 @@
 #if !HAVE_CYSHARP_UNITASK
 using UnityEngine;
+using MizoreRainy.Pandora;
 
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.NetworkUtility
@@ -10,6 +11,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	/// </summary>
 	public partial class AetherLink : MonoBehaviour
 	{
+		#region Utility Methods
+
 		/// <summary>
 		/// Logs a warning message indicating that the UniTask package is required for full functionality
 		/// of the AetherLink class. Provides guidance for installing the UniTask package or accessing
@@ -17,9 +20,13 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		/// </summary>
 		private void ShowUniTaskWarning()
 		{
-			Debug.LogWarning("UniTask package is required for full AetherLink functionality. " +
+			PandoraLogger.LogNetworkWarning("UniTask package is required for full AetherLink functionality. " +
 			                 "Please install UniTask or use Window > Pandora > Network Utility Setup");
 		}
+
+		#endregion
+
+		#region Unity Lifecycle
 
 		/// <summary>
 		/// Initializes the component when the script instance is being loaded.
@@ -30,6 +37,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			ShowUniTaskWarning();
 		}
+
+		#endregion
 	}
 }
 #endif

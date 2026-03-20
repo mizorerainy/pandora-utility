@@ -3,7 +3,8 @@
     "rootNamespace": "MizoreRainy.Pandora.Network",
     "references": [
         "UniTask",
-        "UniTask.Linq"
+        "UniTask.Linq",
+        "MizoreRainy.Pandora.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
