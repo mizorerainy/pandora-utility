@@ -84,19 +84,19 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			GetWindow<PandoraSettingsWindow>("Pandora Settings");
 		}
 
-		/// <summary>
-		///     Called when the window is enabled or opened in the Unity Editor.
-		///     This method loads and applies previously saved settings related to
-		///     the Pandora package configuration, including settings for the
-		///     Config Loader and YAML package usage.
-		/// </summary>
 		private void OnEnable()
 		{
 			// Load saved settings
 			_ConfigLoaderAutoInit = EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false);
 			_UseYaml = EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false);
 
-			_IsYamlInstalled = PackageSetup.IsPackageInstalled(PackageSetup.YAML_PACKAGE_ID);
+			CheckYamlPackageStateAsync();
+		}
+
+		private async void CheckYamlPackageStateAsync()
+		{
+			_IsYamlInstalled = await PackageSetup.IsPackageInstalledAsync(PackageSetup.YAML_PACKAGE_ID);
+			Repaint();
 		}
 
 		/// <summary>
@@ -293,13 +293,29 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		{
 			UpdateScriptingDefines();
 
-			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false))
+			// Pre-check to avoid hitting the UPM completely if setup is fully completed.
+			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false) && EditorPrefs.GetBool(_SETUP_COMPLETE_KEY + "_shown", false))
 			{
-				if (IsPackageInstalled(_UNITASK_PACKAGE_ID)) ShowCompletionDialog();
 				return;
 			}
 
-			if (!IsPackageInstalled(_UNITASK_PACKAGE_ID))
+			_ = CheckSetupAsync();
+		}
+
+		/// <summary>
+		///     Asynchronously validates the setup to prevent editor freezes during domain reload.
+		/// </summary>
+		private static async Task CheckSetupAsync()
+		{
+			bool isInstalled = await IsPackageInstalledAsync(_UNITASK_PACKAGE_ID);
+
+			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false))
+			{
+				if (isInstalled) ShowCompletionDialog();
+				return;
+			}
+
+			if (!isInstalled)
 			{
 				ShowSetupDialog();
 			}
@@ -488,16 +504,12 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			}
 		}
 
-		/// <summary>
-		///     Checks if a Unity package with the specified package ID is installed.
-		/// </summary>
-		/// <param name="_packageId">The unique identifier of the package to check.</param>
-		/// <returns>True if the package is installed, otherwise false.</returns>
-		internal static bool IsPackageInstalled(string _packageId)
+		internal static async Task<bool> IsPackageInstalledAsync(string _packageId)
 		{
 			var request = Client.List(true, false);
 			while (!request.IsCompleted)
 			{
+				await Task.Delay(100);
 			}
 
 			if (request.Status == StatusCode.Success) return request.Result.Any(_p => _p.name == _packageId);
