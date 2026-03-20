@@ -33,7 +33,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 
 			// This opens the file in the code editor set in Unity's preferences.
-			Debug.Log($"Opening config file at '{path}'...");
+			Debug.Log($"<color=yellow>[ConfigLoader]</color> Opening config file at '{path}'...");
 			UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(path, 1);
 		}
 
@@ -41,28 +41,28 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
         /// Forces a reload of all settings from the config.ini file.
         /// </summary>
         [MenuItem("Pandora/Config/Reload Settings from File")]
-        private static void ReloadSettingsFromFile()
+        private static async void ReloadSettingsFromFile()
         {
             ConfigLoader.EnsureInitialized();
-            Debug.Log("[ConfigLoader] Forcing a reload from config.ini...");
-            ConfigLoader.LoadFromFileAsync().GetAwaiter().GetResult();
-            Debug.Log("[ConfigLoader] Reload complete.");
+            Debug.Log("<color=yellow>[ConfigLoader]</color> Forcing a reload from config.ini...");
+            await ConfigLoader.LoadFromFileAsync();
+            Debug.Log("<color=yellow>[ConfigLoader]</color> Reload complete.");
         }
 
         /// <summary>
         /// Resets the config.ini file to the default values defined in the code.
         /// </summary>
         [MenuItem("Pandora/Config/Reset Config to Defaults")]
-        private static void ResetConfigToDefaults()
+        private static async void ResetConfigToDefaults()
         {
             ConfigLoader.EnsureInitialized();
             if (EditorUtility.DisplayDialog("Reset Configuration to Defaults",
                 "This will overwrite 'config.ini' with the default values defined in your code.\n\nThis action cannot be undone.",
                 "Reset and Overwrite", "Cancel"))
             {
-                Debug.Log("[ConfigLoader] Resetting all settings to default values...");
-                ConfigLoader.ResetToDefaultsAsync().GetAwaiter().GetResult();
-                Debug.Log("[ConfigLoader] Reset complete. config.ini has been updated.");
+                Debug.Log("<color=yellow>[ConfigLoader]</color> Resetting all settings to default values...");
+                await ConfigLoader.ResetToDefaultsAsync();
+                Debug.Log("<color=yellow>[ConfigLoader]</color> Reset complete. config.ini has been updated.");
             }
         }
 	}

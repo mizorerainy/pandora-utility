@@ -173,7 +173,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			try
 			{
 				_MainThreadContext = SynchronizationContext.Current;
-				Debug.Log($"[ConfigLoader] Initializing synchronously... Config file path: {GetConfigPath()}");
+				Debug.Log($"<color=yellow>[ConfigLoader]</color> Initializing synchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
 				LoadFromFileSync();
@@ -184,7 +184,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				Debug.Log($"[ConfigLoader] Synchronous initialization complete. {Settings.Count} settings loaded.");
+				Debug.Log($"<color=yellow>[ConfigLoader]</color> Synchronous initialization complete. {Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -199,7 +199,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 
 				if (!(e is InvalidOperationException))
-					Debug.LogError($"[ConfigLoader] Synchronous initialization failed: {e.Message}");
+					Debug.LogError($"<color=yellow>[ConfigLoader]</color> Synchronous initialization failed: {e.Message}");
 				throw;
 			}
 		}
@@ -244,7 +244,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			try
 			{
 				_MainThreadContext = SynchronizationContext.Current;
-				Debug.Log($"[ConfigLoader] Initializing asynchronously... Config file path: {GetConfigPath()}");
+				Debug.Log($"<color=yellow>[ConfigLoader]</color> Initializing asynchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
 				await LoadFromFileAsync();
@@ -255,7 +255,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				Debug.Log($"[ConfigLoader] Asynchronous initialization complete. {Settings.Count} settings loaded.");
+				Debug.Log($"<color=yellow>[ConfigLoader]</color> Asynchronous initialization complete. {Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -271,7 +271,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 
 				if (!(e is InvalidOperationException))
-					Debug.LogError($"[ConfigLoader] Asynchronous initialization failed: {e.Message}");
+					Debug.LogError($"<color=yellow>[ConfigLoader]</color> Asynchronous initialization failed: {e.Message}");
 				throw;
 			}
 		}
@@ -318,7 +318,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 				var fileName = "config.yaml";
 #else
-	   var fileName = "config.ini";
+				var fileName = "config.ini";
 #endif
 
 #if UNITY_EDITOR
@@ -328,7 +328,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #elif UNITY_STANDALONE
 	   _ConfigFilePath = Path.Combine(Path.GetDirectoryName(Application.dataPath)!, fileName);
 #else
-	   _ConfigFilePath = Path.Combine(Application.persistentDataPath, fileName);
+				_ConfigFilePath = Path.Combine(Application.persistentDataPath, fileName);
 #endif
 			}
 
@@ -348,7 +348,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			if (_IsInitialized)
 			{
-				Debug.LogError("[ConfigLoader] Parsers must be registered before initialization.");
+				Debug.LogError("<color=yellow>[ConfigLoader]</color> Parsers must be registered before initialization.");
 				return;
 			}
 
@@ -386,7 +386,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			var path = GetConfigPath();
 			if (!File.Exists(path))
 			{
-				Debug.Log("[ConfigLoader] Config file not found. Creating a new one with default values.");
+				Debug.Log("<color=yellow>[ConfigLoader]</color> Config file not found. Creating a new one with default values.");
 				SaveSync();
 				return;
 			}
@@ -394,7 +394,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 			LoadFromYamlSync(path);
 #else
-	  LoadFromIniSync(path);
+			LoadFromIniSync(path);
 #endif
 			SaveSync(); // Self-heal
 		}
@@ -414,7 +414,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			var path = GetConfigPath();
 			if (!File.Exists(path))
 			{
-				Debug.Log("[ConfigLoader] Config file not found. Creating a new one with default values.");
+				Debug.Log("<color=yellow>[ConfigLoader]</color> Config file not found. Creating a new one with default values.");
 				await SaveAsync();
 				return;
 			}
@@ -422,7 +422,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 			await LoadFromYamlAsync(path);
 #else
-	  await LoadFromIniAsync(path);
+			await LoadFromIniAsync(path);
 #endif
 			await SaveAsync(); // Self-heal
 		}
@@ -441,7 +441,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 				SaveToYamlSync(GetConfigPath());
 #else
-	   SaveToIniSync(GetConfigPath());
+				SaveToIniSync(GetConfigPath());
 #endif
 			}
 			finally
@@ -468,7 +468,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #if USE_YAML_CONFIG && HAVE_VYAML
 				await SaveToYamlAsync(GetConfigPath());
 #else
-	   await SaveToIniAsync(GetConfigPath());
+				await SaveToIniAsync(GetConfigPath());
 #endif
 			}
 			finally
@@ -494,12 +494,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			// Ensure the loader is initialized so we know about all the settings.
 			await InitializeAsync();
 
-			Debug.Log("[ConfigLoader] Resetting all settings to their default values...");
+			Debug.Log("<color=yellow>[ConfigLoader]</color> Resetting all settings to their default values...");
 			foreach (var setting in Settings) setting.SetToDefault();
 
 			// Now, save these default values back to the file.
 			await SaveAsync();
-			Debug.Log("[ConfigLoader] All settings have been reset to defaults and saved.");
+			Debug.Log("<color=yellow>[ConfigLoader]</color> All settings have been reset to defaults and saved.");
 		}
 
 		#endregion
@@ -536,7 +536,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to read INI config. Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to read INI config. Error: {e.Message}");
 			}
 
 			foreach (var setting in Settings)
@@ -594,7 +594,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to save INI config! Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save INI config! Error: {e.Message}");
 			}
 		}
 
@@ -635,7 +635,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to save INI config! Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save INI config! Error: {e.Message}");
 			}
 		}
 
@@ -670,7 +670,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to read YAML config. Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to read YAML config. Error: {e.Message}");
 				yamlData = new Dictionary<string, object>();
 			}
 
@@ -699,7 +699,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// <summary>
 		///     Saves the current configuration settings to a YAML file synchronously.
 		///     This method uses the specified file path to write configuration data
-		///     in YAML format.
+		///     in YAML format with comments preserved.
 		///     Thread-safety is ensured to prevent concurrent file access issues.
 		/// </summary>
 		/// <param name="_path">
@@ -710,8 +710,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			try
 			{
-				var rootNode = BuildNestedYamlData();
-				var yamlBytes = YamlSerializer.Serialize(rootNode).ToArray();
+				var yamlString = GenerateYamlString();
+				var yamlBytes = Encoding.UTF8.GetBytes(yamlString);
 				lock (FileLock)
 				{
 					File.WriteAllBytes(_path, yamlBytes);
@@ -719,12 +719,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to save YAML config! Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save YAML config! Error: {e.Message}");
 			}
 		}
 
 		/// <summary>
 		///     Saves the current application configuration settings to a YAML file asynchronously.
+		///     Preserves comments from the configuration attribute properties.
 		/// </summary>
 		/// <param name="_path">The file path where the YAML configuration will be saved.</param>
 		/// <returns>A task representing the asynchronous save operation.</returns>
@@ -732,8 +733,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			try
 			{
-				var rootNode = BuildNestedYamlData();
-				var yamlBytes = YamlSerializer.Serialize(rootNode).ToArray();
+				var yamlString = GenerateYamlString();
+				var yamlBytes = Encoding.UTF8.GetBytes(yamlString);
 				await Task.Run(() =>
 				{
 					lock (FileLock)
@@ -744,70 +745,100 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[ConfigLoader] Failed to save YAML config! Error: {e.Message}");
+				Debug.LogError($"<color=yellow>[ConfigLoader]</color> Failed to save YAML config! Error: {e.Message}");
 			}
 		}
 
 		/// <summary>
-		///     Builds a nested dictionary structure from the list of configuration settings,
-		///     organizing entries hierarchically based on their group names.
-		///     The group names are parsed
-		///     to create a tree-like structure, ensuring proper nesting where group names are delimited by periods.
+		///     Generates a YAML formatted string containing all configuration settings.
+		///     Organizes settings hierarchically based on their group names and injects
+		///     setting descriptions as YAML comments.
 		/// </summary>
-		/// <returns>
-		///     A dictionary representing the hierarchical structure of the configuration settings,
-		///     where keys are the top-level group names,
-		///     and values are nested dictionaries or configuration values.
-		/// </returns>
-		private static Dictionary<string, object> BuildNestedYamlData()
+		/// <returns>A YAML formatted string.</returns>
+		private static string GenerateYamlString()
 		{
-			var root = new Dictionary<string, object>();
+			var sb = new StringBuilder();
+			sb.AppendLine($"# Last saved: {DateTime.Now}");
 
-			var topLevelGroups = Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct();
+			var topLevelGroups = Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct().OrderBy(_g => _g);
 
 			foreach (var topLevelGroup in topLevelGroups)
 			{
-				var node = new Dictionary<string, object>();
-				root[topLevelGroup] = node;
-				BuildNode(node, topLevelGroup);
+				sb.AppendLine("\n#==================================================");
+				sb.AppendLine($"# :: {topLevelGroup} Settings");
+				sb.AppendLine("#==================================================");
+				sb.AppendLine($"{topLevelGroup}:");
+				BuildYamlNode(sb, topLevelGroup, 1);
 			}
 
-			return root;
+			return sb.ToString();
 		}
 
 		/// <summary>
-		///     Recursively builds a hierarchical representation of configuration settings by mapping
-		///     nested group structures into a dictionary tree format.
-		///     This method organizes all settings
-		///     under their respective group paths, facilitating the creation of a structured configuration.
-		///     If child groups or additional levels are encountered, the method recursively calls itself
-		///     to process nested structures and ensures all related settings are correctly included in the tree.
+		///     Recursively builds a hierarchical representation of configuration settings
+		///     by appending structured text to the StringBuilder.
 		/// </summary>
-		/// <param name="_parentNode">
-		///     The parent node within the hierarchy, represented as a dictionary,
-		///     where child nodes and settings will be added.
-		/// </param>
-		/// <param name="_currentPath">
-		///     The current group path being processed.
-		///     This path determines which settings and subgroups are relevant to the node.
-		/// </param>
-		private static void BuildNode(Dictionary<string, object> _parentNode, string _currentPath)
+		/// <param name="_sb">The StringBuilder to write the YAML content to.</param>
+		/// <param name="_currentPath">The current group path being processed.</param>
+		/// <param name="_indentLevel">The current indentation level of the node.</param>
+		private static void BuildYamlNode(StringBuilder _sb, string _currentPath, int _indentLevel)
 		{
-			var directSettings = Settings.Where(_s => _s.GroupName == _currentPath);
+			string indent = new string(' ', _indentLevel * 2);
+
+			var directSettings = Settings.Where(_s => _s.GroupName == _currentPath).OrderBy(_s => _s.Key);
 			foreach (var setting in directSettings)
-				_parentNode[setting.Key] = setting.GetType().GetProperty("Value")?.GetValue(setting);
+			{
+				if (!string.IsNullOrEmpty(setting.Description))
+				{
+					var lines = setting.Description.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+					foreach (var line in lines)
+						_sb.AppendLine($"{indent}# {line}");
+				}
+
+				string val = setting.GetValueAsString();
+				val = FormatYamlValue(val);
+				_sb.AppendLine($"{indent}{setting.Key}: {val}");
+			}
 
 			var childrenGroups = Settings
 				.Where(_s => _s.GroupName.StartsWith(_currentPath + "."))
 				.Select(_s => _s.GroupName.Substring(_currentPath.Length + 1).Split('.')[0])
-				.Distinct();
+				.Distinct()
+				.OrderBy(_g => _g);
 
 			foreach (var childGroup in childrenGroups)
 			{
-				var childNode = new Dictionary<string, object>();
-				_parentNode[childGroup] = childNode;
-				BuildNode(childNode, $"{_currentPath}.{childGroup}");
+				_sb.AppendLine($"{indent}{childGroup}:");
+				BuildYamlNode(_sb, $"{_currentPath}.{childGroup}", _indentLevel + 1);
 			}
+		}
+
+		/// <summary>
+		///     Formats a value to ensure valid YAML scalar representation.
+		///     Quotes the value if it contains spaces or special characters.
+		/// </summary>
+		/// <param name="_val">The raw string value.</param>
+		/// <returns>The YAML formatted scalar value.</returns>
+		private static string FormatYamlValue(string _val)
+		{
+			if (string.IsNullOrEmpty(_val)) return "\"\"";
+
+			bool needsQuotes = false;
+			if (_val.Contains(" ") || _val.Contains(":") || _val.Contains("#") ||
+				_val.Contains("\n") || _val.Contains("\r") ||
+				_val.StartsWith("[") || _val.StartsWith("{") ||
+				_val.StartsWith("\"") || _val.StartsWith("'"))
+			{
+				needsQuotes = true;
+			}
+
+			if (needsQuotes)
+			{
+				_val = _val.Replace("\\", "\\\\").Replace("\"", "\\\"");
+				return $"\"{_val}\"";
+			}
+
+			return _val;
 		}
 
 
@@ -879,12 +910,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 				Application.quitting += StopWatching;
 
-				Debug.Log("[ConfigLoader] Started watching config file for changes.");
+				Debug.Log("<color=yellow>[ConfigLoader]</color> Started watching config file for changes.");
 			}
 			catch (Exception e)
 			{
 				Debug.LogError(
-					$"[ConfigLoader] Failed to start file watcher. Live-reloading will be disabled. Error: {e.Message}");
+					$"<color=yellow>[ConfigLoader]</color> Failed to start file watcher. Live-reloading will be disabled. Error: {e.Message}");
 				_Watcher?.Dispose();
 				_Watcher = null;
 			}
@@ -908,7 +939,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			_Watcher.Dispose();
 			_Watcher = null;
 			Application.quitting -= StopWatching;
-			Debug.Log("[ConfigLoader] Stopped watching config file.");
+			Debug.Log("<color=yellow>[ConfigLoader]</color> Stopped watching config file.");
 #endif
 		}
 
@@ -931,7 +962,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			{
 				try
 				{
-					Debug.Log("[ConfigLoader] File change detected. Reloading settings...");
+					Debug.Log("<color=yellow>[ConfigLoader]</color> File change detected. Reloading settings...");
 					await LoadFromFileAsync();
 				}
 				finally
@@ -1002,7 +1033,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 						if (existingSetting != null)
 						{
 							var richMessage =
-								"[ConfigLoader] Initialization failed due to a duplicate configuration key.\n\n" +
+								"<color=yellow>[ConfigLoader]</color> Initialization failed due to a duplicate configuration key.\n\n" +
 								$"<color=red><b>Error:</b></color> The key <color=yellow>'{attribute.Key}'</color> defined in <color=white>{_groupName}.{field.Name}</color> is already in use.\n" +
 								$"It was previously defined in the group <color=white>'{existingSetting.GroupName}'</color>. Config keys must be unique.";
 
@@ -1023,7 +1054,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 							if (innerEx is ArgumentException { ParamName: "DefaultValue" } argEx)
 							{
 								var richMessage =
-									"[ConfigLoader] Initialization failed due to an invalid default value in a [Config] attribute.\n\n" +
+									"<color=yellow>[ConfigLoader]</color> Initialization failed due to an invalid default value in a [Config] attribute.\n\n" +
 									$"<b>Setting:</b>\t<color=white>{_groupName}.{field.Name}</color>\n" +
 									"<b>Error:</b>\t\tThe provided default value has the wrong type.\n" +
 									$"<b>Details:</b>\t{innerEx.Message.Split('\r', '\n')[0]}\n" +
@@ -1039,9 +1070,9 @@ namespace MizoreRainy.Pandora.ConfigUtility
 						}
 
 						if (GetParserForType(field.FieldType.GetGenericArguments()[0]) == null &&
-						    !IsPrimitiveOrEnum(field.FieldType.GetGenericArguments()[0]))
+							!IsPrimitiveOrEnum(field.FieldType.GetGenericArguments()[0]))
 							Debug.LogError(
-								$"[ConfigLoader] Error: The type '{field.FieldType.GetGenericArguments()[0].Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
+								$"<color=yellow>[ConfigLoader]</color> Error: The type '{field.FieldType.GetGenericArguments()[0].Name}' for setting '{_groupName}.{field.Name}' is not supported. " +
 								"To add support, create a class that implements IConfigValueParser and register it with ConfigLoader.RegisterParser().");
 					}
 				}

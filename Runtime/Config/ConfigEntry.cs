@@ -234,7 +234,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 				else
 				{
-					Debug.LogWarning($"[ConfigLoader] Custom parser failed for key '{Key}'. Using default value.");
+					Debug.LogWarning($"<color=yellow>[ConfigLoader]</color> Custom parser failed for key '{Key}'. Using default value.");
 					Value = _DefaultValue;
 				}
 			}
@@ -247,7 +247,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				catch (Exception)
 				{
 					Debug.LogWarning(
-						$"[ConfigLoader] Could not parse value '{_rawValue}' for key '{Key}'. Using default value.");
+						$"<color=yellow>[ConfigLoader]</color> Could not parse value '{_rawValue}' for key '{Key}'. Using default value.");
 					Value = _DefaultValue;
 				}
 			}
