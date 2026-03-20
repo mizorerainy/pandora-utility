@@ -146,7 +146,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Constructors/Initialization
+		#region Initialization
 
 		/// <summary>
 		///     Initializes a new instance of the ConfigEntry class with the specified attribute and group name.
@@ -213,7 +213,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Public API - Interface Implementation
+		#region Interface Implementation
 
 		/// <summary>
 		///     Sets the value of the entry from a raw string, using registered or default parsers.

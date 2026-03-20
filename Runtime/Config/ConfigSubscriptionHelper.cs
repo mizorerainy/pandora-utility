@@ -43,7 +43,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Constructors/Initialization
+		#region Initialization
 
 		/// <summary>
 		/// Handles the destruction event of the MonoBehaviour by disposing of all
