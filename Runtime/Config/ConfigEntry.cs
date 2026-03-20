@@ -16,8 +16,6 @@ using UnityEngine;
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.ConfigUtility
 {
-	#region Interfaces
-
 	/// <summary>
 	///     Defines the contract for a configuration entry, providing access to its key,
 	///     description, group name, and value type.
@@ -64,10 +62,6 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		void SetToDefault();
 	}
-
-	#endregion
-
-	#region ConfigEntry Implementation
 
 	/// <summary>
 	///     Represents a single, typed configuration setting that is both awaitable and reactive.
@@ -152,7 +146,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Constructor
+		#region Constructors/Initialization
 
 		/// <summary>
 		///     Initializes a new instance of the ConfigEntry class with the specified attribute and group name.
@@ -185,7 +179,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Public Methods
+		#region Public API
 
 		/// <summary>
 		///     Gets an awaiter for the asynchronous initialization of this configuration entry.
@@ -219,7 +213,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Interface Implementation
+		#region Public API - Interface Implementation
 
 		/// <summary>
 		///     Sets the value of the entry from a raw string, using registered or default parsers.
@@ -273,6 +267,4 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 	}
-
-	#endregion
 }

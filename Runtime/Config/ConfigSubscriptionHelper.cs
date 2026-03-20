@@ -13,8 +13,6 @@ using UnityEngine;
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.ConfigUtility
 {
-	#region ConfigSubscriptionDisposer
-
 	/// <summary>
 	/// Manages a collection of IDisposable subscriptions and ensures their disposal when the GameObject is destroyed.
 	/// Automatically added by using the .AddTo() extension method.
@@ -32,7 +30,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Public Methods
+		#region Public API
 
 		/// <summary>
 		/// Adds an IDisposable to the internal list for later disposal when the MonoBehaviour is destroyed.
@@ -45,7 +43,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Unity Lifecycle
+		#region Constructors/Initialization
 
 		/// <summary>
 		/// Handles the destruction event of the MonoBehaviour by disposing of all
@@ -64,16 +62,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#endregion
 	}
 
-	#endregion
-
-	#region Extension Methods
-
 	/// <summary>
 	/// Provides extension methods to manage IDisposable subscriptions by attaching them to a MonoBehaviour's lifecycle.
 	/// Ensures that the subscriptions are properly disposed when the associated GameObject is destroyed.
 	/// </summary>
 	public static class ConfigDisposableExtensions
 	{
+		#region Public API
 		/// <summary>
 		/// Associates an IDisposable subscription with a specified MonoBehaviour.
 		/// The IDisposable will automatically be disposed of when the MonoBehaviour's GameObject is destroyed.
@@ -97,7 +92,6 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 			disposer.Add(_disposable);
 		}
+		#endregion
 	}
-
-	#endregion
 }

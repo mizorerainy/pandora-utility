@@ -18,6 +18,8 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 {
 	public static class ConfigEditorMenu
 	{
+		#region Editor Menu Items
+
 		/// <summary>
 		/// Opens the config.ini file in the default external script editor.
 		/// </summary>
@@ -66,6 +68,8 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				PandoraLogger.LogConfig("Reset complete. config.ini has been updated.");
 			}
 		}
+
+		#endregion
 	}
 }
 
