@@ -36,6 +36,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 		/// - Allowing removal of profiles with a confirmation step to prevent accidental deletion.
 		/// - Highlighting profiles that are actively in use when supported by the current Unity version.
 		/// </remarks>
+		private Dictionary<string, int> _ProfileTabs = new Dictionary<string, int>();
+
 		private void DrawManagedProfilesSection()
 		{
 			GUILayout.Label("Managed Profiles", EditorStyles.boldLabel);
@@ -50,7 +52,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 				var isActive = managedProfile.TargetProfile != null &&
 							   BuildProfile.GetActiveBuildProfile() == managedProfile.TargetProfile;
 				var originalBgColor = GUI.backgroundColor;
-				if (isActive) GUI.backgroundColor = new Color(.2f, .2f, .5f, 1f); // Light green
+				if (isActive) GUI.backgroundColor = new Color(.2f, .3f, .2f, 1f); // Subtle green for active box
 #endif
 
 				EditorGUILayout.BeginVertical("box");
@@ -62,7 +64,19 @@ namespace MizoreRainy.Pandora.BuildUtility
 				EditorGUILayout.BeginHorizontal();
 
 				var displayName = string.IsNullOrEmpty(managedProfile.Name) ? "Unnamed Profile" : managedProfile.Name;
-				_FoldoutStates[foldoutKey] = EditorGUILayout.Foldout(_FoldoutStates[foldoutKey], displayName, true);
+#if UNITY_6000_0_OR_NEWER
+				if (isActive) displayName += "  [ACTIVE]";
+				
+				Texture2D smallIcon = null;
+				if (managedProfile.TargetProfile != null)
+				{
+					smallIcon = GetIconForProfile(managedProfile.TargetProfile);
+				}
+				var headerContent = smallIcon != null ? new GUIContent(" " + displayName, smallIcon) : new GUIContent(displayName);
+#else
+				var headerContent = new GUIContent(displayName);
+#endif
+				_FoldoutStates[foldoutKey] = EditorGUILayout.Foldout(_FoldoutStates[foldoutKey], headerContent, true);
 
 				GUILayout.FlexibleSpace();
 
@@ -105,34 +119,55 @@ namespace MizoreRainy.Pandora.BuildUtility
 		{
 #if UNITY_6000_0_OR_NEWER
 			EditorGUILayout.BeginVertical();
-
-			// Profile name input moved here for a cleaner UI
-			_managedProfile.Name = EditorGUILayout.TextField("Profile Name", _managedProfile.Name);
+			
+			// --- Draw Separator ---
+			GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
+			
+			var tabKey = $"tab_{_managedProfile.GetHashCode()}";
+			_ProfileTabs.TryAdd(tabKey, 0); // 0 = Simple, 1 = Settings
 
 			// --- Main Two-Column Layout ---
 			EditorGUILayout.BeginHorizontal();
 
-			// --- Left Column: Settings (expandable horizontally only) ---
+			// --- Left Column: Settings ---
 			EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-			_managedProfile.TargetProfile = (BuildProfile)EditorGUILayout.ObjectField("Unity Build Profile",
-				_managedProfile.TargetProfile, typeof(BuildProfile), false);
-
-			if (_managedProfile.TargetProfile == null)
+			
+			// Tabs
+			_ProfileTabs[tabKey] = GUILayout.Toolbar(_ProfileTabs[tabKey], new string[] { "General", "Settings" });
+			GUILayout.Space(5);
+			
+			if (_ProfileTabs[tabKey] == 0)
 			{
-				EditorGUILayout.HelpBox("Please assign a Unity Build Profile.", MessageType.Warning);
+				// General Tab Content
+				_managedProfile.Name = EditorGUILayout.TextField("Profile Name", _managedProfile.Name);
+				_managedProfile.TargetProfile = (BuildProfile)EditorGUILayout.ObjectField("Unity Build Profile",
+					_managedProfile.TargetProfile, typeof(BuildProfile), false);
+
+				if (_managedProfile.TargetProfile == null)
+				{
+					EditorGUILayout.HelpBox("Please assign a Unity Build Profile.", MessageType.Warning);
+				}
 			}
 			else
 			{
-				_managedProfile.ProductNameOverride = EditorGUILayout.TextField(
-					new GUIContent("Product Name Override", "Leave empty to use the name from the linked profile."),
-					_managedProfile.ProductNameOverride);
-				_managedProfile.BuildSuffix = EditorGUILayout.TextField(
-					new GUIContent("Build Suffix", "e.g., 'prd', 'dev', 'test'"), _managedProfile.BuildSuffix);
+				// Settings Tab Content
+				if (_managedProfile.TargetProfile == null)
+				{
+					EditorGUILayout.HelpBox("Please assign a Unity Build Profile in the 'General' tab first.", MessageType.Warning);
+				}
+				else
+				{
+					_managedProfile.ProductNameOverride = EditorGUILayout.TextField(
+						new GUIContent("Product Name Override", "Leave empty to use the name from the linked profile."),
+						_managedProfile.ProductNameOverride);
+					_managedProfile.BuildSuffix = EditorGUILayout.TextField(
+						new GUIContent("Build Suffix", "e.g., 'prd', 'dev', 'test'"), _managedProfile.BuildSuffix);
+				}
 			}
 
 			EditorGUILayout.EndVertical();
 
-			// --- Right Column: Icon (compact, minimal vertical space) ---
+			// --- Right Column: Icon ---
 			if (_managedProfile.TargetProfile != null)
 			{
 				EditorGUILayout.BeginVertical(GUILayout.Width(80), GUILayout.ExpandWidth(false));
@@ -151,19 +186,22 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 			EditorGUILayout.EndHorizontal();
 
-			// --- Scene List ---
+			// --- Draw Separator ---
+			GUILayout.Space(5);
+			GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
+			GUILayout.Space(5);
+
+			// --- Full Width Bottom Section based on Tab ---
 			if (_managedProfile.TargetProfile != null)
 			{
-				var sceneFoldoutKey = $"scenes_{_managedProfile.GetHashCode()}";
-				_SceneListFoldouts.TryAdd(sceneFoldoutKey, false);
-
-				_SceneListFoldouts[sceneFoldoutKey] =
-					EditorGUILayout.Foldout(_SceneListFoldouts[sceneFoldoutKey], "Scenes in Profile", true);
-				if (_SceneListFoldouts[sceneFoldoutKey])
+				if (_ProfileTabs[tabKey] == 0)
 				{
-					EditorGUI.indentLevel++;
+					// General Tab - Scenes List
+					EditorGUILayout.LabelField("Scenes in Profile", EditorStyles.boldLabel);
+					
 					var scenes = GetScenesFromProfile(_managedProfile.TargetProfile);
 					if (scenes.Count > 0)
+					{
 						foreach (var sceneAsset in scenes)
 						{
 							EditorGUILayout.BeginHorizontal();
@@ -183,10 +221,16 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 							EditorGUILayout.EndHorizontal();
 						}
+					}
 					else
+					{
 						EditorGUILayout.LabelField("No enabled scenes in this profile.");
-
-					EditorGUI.indentLevel--;
+					}
+				}
+				else
+				{
+					// Settings Tab - Post-Build Actions
+					DrawPostBuildActions(_managedProfile);
 				}
 			}
 
@@ -196,11 +240,14 @@ namespace MizoreRainy.Pandora.BuildUtility
 				var isActive = BuildProfile.GetActiveBuildProfile() == _managedProfile.TargetProfile;
 
 				GUILayout.Space(5);
+				GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
+				GUILayout.Space(5);
+
 				EditorGUILayout.BeginHorizontal();
 
 				// Set Active Button
 				EditorGUI.BeginDisabledGroup(isActive);
-				if (GUILayout.Button("Set Active")) BuildProfile.SetActiveBuildProfile(_managedProfile.TargetProfile);
+				if (GUILayout.Button(isActive ? "Already Active" : "Set Active")) BuildProfile.SetActiveBuildProfile(_managedProfile.TargetProfile);
 				EditorGUI.EndDisabledGroup();
 
 				EditorGUILayout.EndHorizontal();
@@ -211,12 +258,103 @@ namespace MizoreRainy.Pandora.BuildUtility
 				var originalColorButton = GUI.backgroundColor;
 				GUI.backgroundColor = isActive ? Color.cyan : Color.white;
 				if (GUILayout.Button($"Build '{_managedProfile.Name}'", GUILayout.Height(25)))
+				{
 					BuildProject(_managedProfile);
+					GUIUtility.ExitGUI();
+				}
 				GUI.backgroundColor = originalColorButton;
 				EditorGUI.EndDisabledGroup();
 			}
 
 			EditorGUILayout.EndVertical();
+#endif
+		}
+
+		/// <summary>
+		/// Renders the Post-Build Actions section for a managed profile.
+		/// </summary>
+		private void DrawPostBuildActions(ManagedBuildProfile _managedProfile)
+		{
+#if UNITY_6000_0_OR_NEWER
+			EditorGUILayout.LabelField("Post-Build Actions", EditorStyles.boldLabel);
+
+			if (_managedProfile.PostBuildCopyTasks == null)
+				_managedProfile.PostBuildCopyTasks = new List<BuildCopyTask>();
+
+			if (_managedProfile.PostBuildCopyTasks.Count == 0)
+			{
+				EditorGUILayout.HelpBox("No post-build actions configured.", MessageType.Info);
+			}
+
+			for (var i = 0; i < _managedProfile.PostBuildCopyTasks.Count; i++)
+			{
+				var task = _managedProfile.PostBuildCopyTasks[i];
+				EditorGUILayout.BeginVertical("box");
+
+				EditorGUILayout.BeginHorizontal();
+				EditorGUILayout.LabelField($"Copy Task {i + 1}", EditorStyles.boldLabel);
+				GUILayout.FlexibleSpace();
+				if (GUILayout.Button(new GUIContent("X", "Remove Task"), GUILayout.Width(25)))
+				{
+					_managedProfile.PostBuildCopyTasks.RemoveAt(i);
+					i--;
+					EditorGUILayout.EndHorizontal();
+					EditorGUILayout.EndVertical();
+					continue;
+				}
+
+				EditorGUILayout.EndHorizontal();
+
+				// Source Path with File/Folder picker buttons
+				EditorGUILayout.BeginHorizontal();
+				task.SourcePath = EditorGUILayout.TextField("Source", task.SourcePath);
+				if (GUILayout.Button(new GUIContent("📁", "Select Source Folder"), EditorStyles.miniButtonLeft, GUILayout.Width(30)))
+				{
+					var path = EditorUtility.OpenFolderPanel("Select Source Folder", "", "");
+					if (!string.IsNullOrEmpty(path))
+					{
+						task.SourcePath = path;
+						GUI.FocusControl(null); // Remove focus to refresh UI
+					}
+				}
+				if (GUILayout.Button(new GUIContent("📄", "Select Source File"), EditorStyles.miniButtonRight, GUILayout.Width(30)))
+				{
+					var path = EditorUtility.OpenFilePanel("Select Source File", "", "");
+					if (!string.IsNullOrEmpty(path))
+					{
+						task.SourcePath = path;
+						GUI.FocusControl(null);
+					}
+				}
+				EditorGUILayout.EndHorizontal();
+
+				// Destination Path toggle
+				EditorGUILayout.BeginHorizontal();
+				if (!task.SpecifyDestination)
+				{
+					EditorGUILayout.PrefixLabel("Destination");
+					if (GUILayout.Button("Default (Build Root)", EditorStyles.popup))
+					{
+						task.SpecifyDestination = true;
+					}
+				}
+				else
+				{
+					task.DestinationRelativePath = EditorGUILayout.TextField("Destination (Relative)", task.DestinationRelativePath);
+					if (GUILayout.Button(new GUIContent("X", "Reset to Default (Build Root)"), GUILayout.Width(25)))
+					{
+						task.SpecifyDestination = false;
+						task.DestinationRelativePath = "";
+						GUI.FocusControl(null);
+					}
+				}
+				EditorGUILayout.EndHorizontal();
+
+				EditorGUILayout.EndVertical();
+			}
+
+			GUILayout.Space(5);
+			if (GUILayout.Button("+ Add Copy Task")) _managedProfile.PostBuildCopyTasks.Add(new BuildCopyTask());
 #endif
 		}
 
@@ -277,6 +415,9 @@ namespace MizoreRainy.Pandora.BuildUtility
 			{
 				PandoraLogger.LogBuild(
 					$"Build SUCCEEDED: {report.summary.outputPath} ({report.summary.totalSize / 1024 / 1024} MB)");
+					
+				ExecutePostBuildCopy(_managedProfile, report.summary.outputPath);
+				
 				Process.Start(Path.GetDirectoryName(report.summary.outputPath) ?? string.Empty);
 			}
 			else
