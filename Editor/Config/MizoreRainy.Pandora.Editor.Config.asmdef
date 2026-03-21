@@ -1,0 +1,19 @@
+{
+    "name": "MizoreRainy.Pandora.Editor.Config",
+    "rootNamespace": "MizoreRainy.Pandora.Config.Editor",
+    "references": [
+        "MizoreRainy.Pandora.Runtime.Config",
+        "MizoreRainy.Pandora.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

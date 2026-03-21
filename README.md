@@ -1,101 +1,69 @@
-# Pandora Unity Utility Package
+# Pandora Utility
 
-A comprehensive Unity utility package providing networking solutions and other helpful tools for Unity game development.
-
-## Features
-
-- **AetherLink Network System**: Advanced networking utilities for Unity projects for quick 1–1 connection in Local Area Network.
-- **Editor Tools**: Development tools to enhance your Unity workflow
-
-## Requirements
-
-- Unity 2021.3 or later (6.0+ for **Build Utility**)
-- Compatible with Unity Package Manager
+A comprehensive Unity development toolkit that provides essential utilities for configuration management, build automation, and networking capabilities.
 
 ## Installation
 
-### Via Git URL (Recommended)
+You can install this package via Unity Package Manager (UPM) using the Git URL:
 
-1. Open Unity and go to **Window → Package Manager**
-2. Click the **+** button in the top-left corner
-3. Select **Add package from git URL...**
-4. Enter the following URL:
-   ```
-   https://github.com/mizorerainy/pandora-unity-package.git
-   ```
-5. Click **Add**
-
-### Via Package Manager (Local)
-
-1. Clone or download this repository
-2. Open Unity and go to **Window → Package Manager**
-3. Click the **+** button and select **Add package from disk...**
-4. Navigate to the package folder and select `package.json`
-
-## Package Structure
 ```
-├── Runtime/
-│   └── Network/
-│       └── AetherLink/          # Advanced networking system
-├── Editor/                      # Editor-only utilities
-├── Documentation~/              # Additional documentation (if available)
-├── package.json                 # Package manifest
-├── CHANGELOG.md                 # Version history
-└── LICENSE                      # License information
+https://github.com/mizorerainy/pandora-utility.git
 ```
-## Documentation
 
-- Check the `CHANGELOG.md` for version history and updates
-- Browse the source code for detailed API usage
-- Each script includes inline documentation and comments
+Alternatively, you can specify a version tag (e.g., `#v1.0.0`) at the end of the URL.
 
-## API Reference
+## Getting Started
 
-### AetherLink Network System
+### Configuration System
+```csharp
+// Define settings
+public static class GameSettings
+{
+    [Config("PlayerName", "Anonymous", "The player's display name")]
+    public static readonly ConfigEntry<string> PlayerName;
+}
 
-The AetherLink system provides advanced networking capabilities for Unity projects. Key elements include:
+// Initialize (required by default)
+await ConfigLoader.InitializeAsync();
 
-- Master-Slave connection architecture
-- Automatic network discovery on LAN
-- Packet-based data transmission with headers
-- Built-in serialization for common Unity types
-- Network statistics and connection monitoring
+// Use settings
+string name = GameSettings.PlayerName.Value;
+GameSettings.PlayerName.Value = "NewName"; // Auto-saves
+```
 
-*Complete API documentation available in `Documentation~/api-reference.md`*
+### AetherLink Networking
+```csharp
+// Initialize AetherLink
+AetherLink.Instance.Initialize(AetherLink.Settings.Default);
+AetherLink.Instance.StartLink();
 
-## Contributing
+// Send data
+AetherLink.Instance.SendData(1001, "Hello", 42, true);
 
-We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
+// Receive data
+await foreach(var packet in AetherLink.Instance.OnDataReceived())
+{
+    var objects = packet.ReadObjects();
+    // Handle received data
+}
+```
 
-### Development Setup
+## Features Overview
 
-1. Fork this repository
-2. Clone your fork locally
-3. Create a new branch for your feature
-4. Make your changes and test thoroughly
-5. Submit a pull request
+- **🔧 Configuration System**: Dual Format Support (INI/YAML), Automatic Discovery, Live Reloading, Type Safety, Custom Parsers.
+- **🏗️ Build Utility**: Automated Build Pipeline, Platform Management, Build Configurations, Post-Build Actions.
+- **🌐 Network Features (AetherLink)**: Cross-Platform Networking (UDP/TCP), Master-Slave Architecture, Real-time Communication, Auto-Discovery, Serialization System.
 
-## Versioning
+## Requirements
 
-This package follows [Semantic Versioning](https://semver.org/). See `CHANGELOG.md` for version history.
+- Unity 2021.3 or later
+- .NET Framework 4.7.1 or .NET Standard 2.0
+- **Optional Dependencies**: UniTask (for async), VYaml (for YAML configs).
+
+## Documentation & Support
+
+Detailed documentation is available in the Wiki. For community support and discussions, check the Unity Forum and GitHub Issues.
 
 ## License
 
-This project is licensed under the terms specified in the `LICENSE` file.
-
-## Support
-
-- **Documentation**: Complete documentation available in `Documentation~/` folder
-- **API Reference**: Detailed API documentation with examples
-- **Tutorials**: Step-by-step guides for common scenarios
-
-## Compatibility
-
-- **Unity Version**: 2021.3+
-- **Platforms**: All platforms supported by Unity
-- **Rendering**: Compatible with Built-in, URP, and HDRP
-- **Network**: Local Area Network (LAN) focused, supports 1-to-1 connections
-
----
-
-*Made with ❤️ for the Unity community*# pandora-utility
+This package is part of the Pandora Utility framework.

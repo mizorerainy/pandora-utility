@@ -1,0 +1,28 @@
+{
+  "name": "com.mizorerainy.pandora-utility",
+  "version": "1.0.0",
+  "displayName": "Pandora Utility Manager",
+  "description": "A comprehensive utility package for Unity projects, providing essential tools and extensions.",
+  "unity": "2021.3",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.0.2"
+  },
+  "keywords": [
+    "utility",
+    "manager",
+    "tools",
+    "editor",
+    "pandora",
+    "async",
+    "unitask"
+  ],
+  "author": {
+    "name": "MizoreRainy",
+    "url": "https://github.com/MizoreRainy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MizoreRainy/pandora-utility.git"
+  },
+  "license": "MIT"
+}

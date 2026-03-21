@@ -1,0 +1,26 @@
+{
+    "name": "MizoreRainy.Pandora.Editor.Network",
+    "rootNamespace": "MizoreRainy.Pandora.Network.Editor",
+    "references": [
+        "MizoreRainy.Pandora.Runtime.Network"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "HAVE_CYSHARP_UNITASK"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "2.0.0",
+            "define": "HAVE_CYSHARP_UNITASK"
+        }
+    ],
+    "noEngineReferences": false
+}
