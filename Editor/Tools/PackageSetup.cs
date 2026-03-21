@@ -76,6 +76,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     Used to determine if YAML configuration format support is available.
 		/// </summary>
 		private bool _IsYamlInstalled;
+		private bool _IsUniTaskInstalled;
 
 		/// <summary>
 		///     Displays the Pandora Settings window in the Unity Editor.
@@ -95,11 +96,18 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			_UseYaml = EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false);
 
 			CheckYamlPackageStateAsync();
+			CheckUniTaskPackageStateAsync();
 		}
 
 		private async void CheckYamlPackageStateAsync()
 		{
 			_IsYamlInstalled = await PackageSetup.IsPackageInstalledAsync(PackageSetup.YAML_PACKAGE_ID);
+			Repaint();
+		}
+
+		private async void CheckUniTaskPackageStateAsync()
+		{
+			_IsUniTaskInstalled = await PackageSetup.IsPackageInstalledAsync(PackageSetup.UNITASK_PACKAGE_ID);
 			Repaint();
 		}
 
@@ -208,6 +216,40 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			EditorGUI.EndDisabledGroup();
 
 			EditorGUILayout.EndVertical();
+			EditorGUILayout.Space(10);
+			
+			// --- Network Utility Section ---
+			EditorGUILayout.BeginVertical(GUI.skin.box);
+			EditorGUILayout.LabelField("Network Utility", headerStyle);
+			
+			Rect r3 = EditorGUILayout.GetControlRect(false, 1);
+			EditorGUI.DrawRect(r3, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+			EditorGUILayout.Space(5);
+
+			EditorGUI.BeginChangeCheck();
+			bool targetUniTaskState = EditorGUILayout.Toggle(
+				new GUIContent("Enable UniTask Support",
+					"Enabling this will install the UniTask package. Disabling it will remove the UniTask package."),
+				_IsUniTaskInstalled);
+			
+			if (EditorGUI.EndChangeCheck())
+			{
+				if (targetUniTaskState && !_IsUniTaskInstalled)
+				{
+					PackageSetup.InstallUniTask();
+				}
+				else if (!targetUniTaskState && _IsUniTaskInstalled)
+				{
+					PackageSetup.RemoveUniTask();
+				}
+			}
+
+			if (!_IsUniTaskInstalled)
+			{
+				EditorGUILayout.HelpBox("AetherLink and networking features require UniTask to function effectively.", MessageType.Info);
+			}
+
+			EditorGUILayout.EndVertical();
 
 			if (EditorApplication.isCompiling) EditorGUI.EndDisabledGroup();
 		}
@@ -226,7 +268,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     It is used to check for the installation status of the UniTask package
 		///     and manage scripting define symbols accordingly.
 		/// </summary>
-		private const string _UNITASK_PACKAGE_ID = "com.cysharp.unitask";
+		internal const string UNITASK_PACKAGE_ID = "com.cysharp.unitask";
 
 		/// <summary>
 		///     The Git URL for the UniTask package used within the Pandora utility setup.
@@ -347,7 +389,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		/// </summary>
 		private static async Task CheckSetupAsync()
 		{
-			bool isInstalled = await IsPackageInstalledAsync(_UNITASK_PACKAGE_ID);
+			bool isInstalled = await IsPackageInstalledAsync(UNITASK_PACKAGE_ID);
 
 			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false))
 			{
@@ -466,7 +508,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				"Skip (Install Manually)", "Cancel");
 			switch (result)
 			{
-				case 0: InstallPackageAsync(_UNITASK_PACKAGE_ID, _UNITASK_GIT_URL).GetAwaiter(); break;
+				case 0: InstallPackageAsync(UNITASK_PACKAGE_ID, _UNITASK_GIT_URL).GetAwaiter(); break;
 				case 1: EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, true); break;
 			}
 		}
@@ -509,6 +551,30 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			}
 		}
 
+		internal static async void InstallUniTask()
+		{
+			try
+			{
+				await InstallPackageAsync(UNITASK_PACKAGE_ID, _UNITASK_GIT_URL);
+			}
+			catch (Exception)
+			{
+				// Ignored
+			}
+		}
+
+		internal static async void RemoveUniTask()
+		{
+			try
+			{
+				await RemovePackageAsync(UNITASK_PACKAGE_ID);
+			}
+			catch (Exception)
+			{
+				// Ignored
+			}
+		}
+
 		/// <summary>
 		///     Installs a Unity package from a specified package ID and version or URL.
 		///     Displays a progress bar during installation, provides a success or error dialog,
@@ -542,6 +608,37 @@ namespace MizoreRainy.Pandora.Editor.Tools
 					else if (request.Status >= StatusCode.Failure)
 					{
 						Debug.LogError($"Failed to install package {_packageId} from '{_packageVersionOrUrl}'. Error: {request.Error.message}");
+						tcs.TrySetResult(false);
+					}
+				}
+			};
+			
+			EditorApplication.update += checkProgress;
+			return tcs.Task;
+		}
+
+		private static Task RemovePackageAsync(string _packageId)
+		{
+			var tcs = new TaskCompletionSource<bool>();
+			var request = Client.Remove(_packageId);
+
+			EditorApplication.CallbackFunction checkProgress = null;
+			checkProgress = () =>
+			{
+				if (request.IsCompleted)
+				{
+					EditorApplication.update -= checkProgress;
+
+					if (request.Status == StatusCode.Success)
+					{
+						Debug.Log($"Successfully removed package: {_packageId}");
+						UpdateScriptingDefines();
+						AssetDatabase.Refresh();
+						tcs.TrySetResult(true);
+					}
+					else if (request.Status >= StatusCode.Failure)
+					{
+						Debug.LogError($"Failed to remove package {_packageId}. Error: {request.Error.message}");
 						tcs.TrySetResult(false);
 					}
 				}
