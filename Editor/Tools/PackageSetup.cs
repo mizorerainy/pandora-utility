@@ -520,42 +520,65 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     Use a Git URL for packages hosted on external repositories.
 		/// </param>
 		/// <returns>A task representing the asynchronous package installation operation.</returns>
-		private static async Task InstallPackageAsync(string _packageId, string _packageVersionOrUrl)
+		private static Task InstallPackageAsync(string _packageId, string _packageVersionOrUrl)
 		{
-			EditorUtility.DisplayProgressBar("Package Installation", $"Installing {_packageId}...", 0f);
+			var tcs = new TaskCompletionSource<bool>();
 			var request = Client.Add(_packageVersionOrUrl);
 
-			while (!request.IsCompleted) await Task.Delay(100);
-
-			EditorUtility.ClearProgressBar();
-
-			if (request.Status == StatusCode.Success)
+			EditorApplication.CallbackFunction checkProgress = null;
+			checkProgress = () =>
 			{
-				Debug.Log($"Successfully installed package: {request.Result.name}");
-				EditorUtility.DisplayDialog("Installation Success", $"Successfully installed {_packageId}.", "OK");
-				UpdateScriptingDefines();
-				AssetDatabase.Refresh();
-			}
-			else if (request.Status >= StatusCode.Failure)
-			{
-				Debug.LogError(
-					$"Failed to install package {_packageId} from '{_packageVersionOrUrl}'. Error: {request.Error.message}");
-				EditorUtility.DisplayDialog("Installation Failed",
-					$"Failed to install package '{_packageId}'.\n\nError: {request.Error.message}\n\nPlease check the console for details.",
-					"OK");
-			}
+				if (request.IsCompleted)
+				{
+					EditorApplication.update -= checkProgress;
+
+					if (request.Status == StatusCode.Success)
+					{
+						Debug.Log($"Successfully installed package: {_packageId}");
+						EditorUtility.DisplayDialog("Installation Success", $"Successfully installed {_packageId}.", "OK");
+						UpdateScriptingDefines();
+						AssetDatabase.Refresh();
+						tcs.TrySetResult(true);
+					}
+					else if (request.Status >= StatusCode.Failure)
+					{
+						Debug.LogError($"Failed to install package {_packageId} from '{_packageVersionOrUrl}'. Error: {request.Error.message}");
+						EditorUtility.DisplayDialog("Installation Failed",
+							$"Failed to install package '{_packageId}'.\n\nError: {request.Error.message}\n\nPlease check the console for details.",
+							"OK");
+						tcs.TrySetResult(false);
+					}
+				}
+			};
+			
+			EditorApplication.update += checkProgress;
+			return tcs.Task;
 		}
 
-		internal static async Task<bool> IsPackageInstalledAsync(string _packageId)
+		internal static Task<bool> IsPackageInstalledAsync(string _packageId)
 		{
+			var tcs = new TaskCompletionSource<bool>();
 			var request = Client.List(true, false);
-			while (!request.IsCompleted)
-			{
-				await Task.Delay(100);
-			}
 
-			if (request.Status == StatusCode.Success) return request.Result.Any(_p => _p.name == _packageId);
-			return false;
+			EditorApplication.CallbackFunction checkProgress = null;
+			checkProgress = () =>
+			{
+				if (request.IsCompleted)
+				{
+					EditorApplication.update -= checkProgress;
+					if (request.Status == StatusCode.Success)
+					{
+						tcs.TrySetResult(request.Result.Any(_p => _p.name == _packageId));
+					}
+					else
+					{
+						tcs.TrySetResult(false);
+					}
+				}
+			};
+			
+			EditorApplication.update += checkProgress;
+			return tcs.Task;
 		}
 
 		/// <summary>
