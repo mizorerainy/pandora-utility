@@ -5,7 +5,8 @@
   "description": "A comprehensive utility package for Unity projects, providing essential tools and extensions.",
   "unity": "2021.3",
   "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "3.0.2"
+    "com.unity.nuget.newtonsoft-json": "3.0.2",
+    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask"
   },
   "keywords": [
     "utility",
