@@ -189,8 +189,25 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 
 				string val = setting.GetValueAsString();
-				val = FormatYamlValue(val);
-				_sb.AppendLine($"{indent}{setting.Key}: {val}");
+				if (val == "[]")
+				{
+					_sb.AppendLine($"{indent}{setting.Key}: []");
+				}
+				else if (val.StartsWith("[") && val.EndsWith("]"))
+				{
+					_sb.AppendLine($"{indent}{setting.Key}:");
+					string innerVal = val.Substring(1, val.Length - 2);
+					var elements = innerVal.Split(new[] { ", " }, StringSplitOptions.None);
+					foreach (var el in elements)
+					{
+						_sb.AppendLine($"{indent}  - {FormatYamlValue(el)}");
+					}
+				}
+				else
+				{
+					val = FormatYamlValue(val);
+					_sb.AppendLine($"{indent}{setting.Key}: {val}");
+				}
 			}
 
 			var childrenGroups = Registry.Settings
