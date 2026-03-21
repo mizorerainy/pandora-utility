@@ -111,7 +111,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		/// <summary>
 		///     Displays the Config Editor Window for modifying and managing configuration settings in the Unity Editor.
 		/// </summary>
-		[MenuItem("Pandora/Config/Edit Configuration")]
+		[MenuItem("Pandora/Config/Edit Configuration", priority = 100)]
 		public static void ShowWindow()
 		{
 			GetWindow<ConfigEditorWindow>("Pandora Config Editor");

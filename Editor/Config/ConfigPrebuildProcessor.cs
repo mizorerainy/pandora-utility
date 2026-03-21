@@ -8,68 +8,68 @@ using System.IO;
 
 namespace MizoreRainy.Pandora.ConfigUtility.Editor
 {
-    /// <summary>
-    /// Evaluates assemblies at build time to discover any config entries and populates the cache
-    /// replacing the need for reflection at runtime.
-    /// </summary>
-    public class ConfigPrebuildProcessor : IPreprocessBuildWithReport
-    {
-        public int callbackOrder => 0;
+	/// <summary>
+	/// Evaluates assemblies at build time to discover any config entries and populates the cache
+	/// replacing the need for reflection at runtime.
+	/// </summary>
+	public class ConfigPrebuildProcessor : IPreprocessBuildWithReport
+	{
+		public int callbackOrder => 0;
 
-        public void OnPreprocessBuild(BuildReport report)
-        {
-            GenerateConfigCache();
-        }
+		public void OnPreprocessBuild(BuildReport report)
+		{
+			GenerateConfigCache();
+		}
 
-        [MenuItem("Tools/Pandora/Generate Config Cache")]
-        public static void GenerateConfigCache()
-        {
-            var fields = TypeCache.GetFieldsWithAttribute<ConfigAttribute>();
-            var typeNames = new HashSet<string>();
+		[MenuItem("Pandora/Config/Generate Config Cache", priority = 130)]
+		public static void GenerateConfigCache()
+		{
+			var fields = TypeCache.GetFieldsWithAttribute<ConfigAttribute>();
+			var typeNames = new HashSet<string>();
 
-            foreach (var field in fields)
-            {
-                Type topmostStatic = null;
-                Type current = field.DeclaringType;
-                while (current != null)
-                {
-                    if (current.IsClass && current.IsSealed && current.IsAbstract)
-                        topmostStatic = current;
-                    else
-                        break;
-                    
-                    current = current.DeclaringType;
-                }
+			foreach (var field in fields)
+			{
+				Type topmostStatic = null;
+				Type current = field.DeclaringType;
+				while (current != null)
+				{
+					if (current.IsClass && current.IsSealed && current.IsAbstract)
+						topmostStatic = current;
+					else
+						break;
 
-                if (topmostStatic != null)
-                {
-                    typeNames.Add(topmostStatic.AssemblyQualifiedName);
-                }
-            }
+					current = current.DeclaringType;
+				}
 
-            var cachePath = "Assets/Pandora/Resources/PandoraConfigCache.asset";
-            
-            // Ensure directory exists
-            var dir = Path.GetDirectoryName(cachePath);
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
+				if (topmostStatic != null)
+				{
+					typeNames.Add(topmostStatic.AssemblyQualifiedName);
+				}
+			}
 
-            var cache = AssetDatabase.LoadAssetAtPath<ConfigTypeCacheSO>(cachePath);
-            if (cache == null)
-            {
-                cache = ScriptableObject.CreateInstance<ConfigTypeCacheSO>();
-                AssetDatabase.CreateAsset(cache, cachePath);
-            }
+			var cachePath = "Assets/Pandora/Resources/PandoraConfigCache.asset";
 
-            cache.ConfigTypes.Clear();
-            cache.ConfigTypes.AddRange(typeNames);
-            
-            EditorUtility.SetDirty(cache);
-            AssetDatabase.SaveAssets();
+			// Ensure directory exists
+			var dir = Path.GetDirectoryName(cachePath);
+			if (!Directory.Exists(dir))
+			{
+				Directory.CreateDirectory(dir);
+			}
 
-            Debug.Log($"[Pandora Config] Generated config cache with {cache.ConfigTypes.Count} root types.");
-        }
-    }
+			var cache = AssetDatabase.LoadAssetAtPath<ConfigTypeCacheSO>(cachePath);
+			if (cache == null)
+			{
+				cache = ScriptableObject.CreateInstance<ConfigTypeCacheSO>();
+				AssetDatabase.CreateAsset(cache, cachePath);
+			}
+
+			cache.ConfigTypes.Clear();
+			cache.ConfigTypes.AddRange(typeNames);
+
+			EditorUtility.SetDirty(cache);
+			AssetDatabase.SaveAssets();
+
+			Debug.Log($"[Pandora Config] Generated config cache with {cache.ConfigTypes.Count} root types.");
+		}
+	}
 }
