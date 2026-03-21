@@ -3,6 +3,7 @@
 * [Tutorials](tutorials/basic-networking.md)
   * [Basic Networking](tutorials/basic-networking.md)
   * [AetherLink Setup](tutorials/aetherlink-setup.md)
+  * [Creating Custom Parsers](tutorials/custom-parsers.md)
   * [Troubleshooting](tutorials/troubleshooting.md)
 * [Examples](examples/advanced-scenarios.md)
   * [Advanced Scenarios](examples/advanced-scenarios.md)
