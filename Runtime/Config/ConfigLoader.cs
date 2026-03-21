@@ -37,17 +37,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region Fields
 
 		/// <summary>
-		///     Contains a collection of configurable settings used within the application lifecycle.
-		///     It serves as a central repository for managing, loading, and resetting configuration entries.
+		///     The active registry holding configuration settings and parsers.
+		///     Can be swapped for unit testing isolated environments.
 		/// </summary>
-		private static readonly List<IConfigEntry> Settings = new();
-
-		/// <summary>
-		///     Represents a collection of registered configuration value parsers used within the configuration
-		///     system to handle the conversion of various data types to and from their string representations.
-		///     These parsers facilitate seamless interaction with custom configuration formats and types.
-		/// </summary>
-		private static readonly List<IConfigValueParser> Parsers = new();
+		public static ConfigRegistry Registry { get; set; } = new ConfigRegistry();
 
 		/// <summary>
 		///     Indicates whether the ConfigLoader has completed its initialization process.
@@ -186,7 +179,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				PandoraLogger.LogConfig($"Synchronous initialization complete. {Settings.Count} settings loaded.");
+				PandoraLogger.LogConfig($"Synchronous initialization complete. {Registry.Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -257,7 +250,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					_IsInitializing = false;
 				}
 
-				PandoraLogger.LogConfig($"Asynchronous initialization complete. {Settings.Count} settings loaded.");
+				PandoraLogger.LogConfig($"Asynchronous initialization complete. {Registry.Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
 #if UNITY_EDITOR || UNITY_STANDALONE
@@ -346,33 +339,78 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#region Settings Discovery
 
-		/// <summary>
-		///     Discovers and registers configuration settings by scanning all loaded assemblies for static classes
-		///     that contain configuration entries.
-		///     This is an internal process used during initialization to
-		///     ensure all relevant settings are available for the application's configuration system.
-		/// </summary>
 		private static void DiscoverSettings()
 		{
-			Settings.Clear();
-			var processedTypes = new HashSet<Type>(); // FIX: Keep track of processed types
-			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-			foreach (var assembly in assemblies)
-				try
-				{
-					var types = assembly.GetTypes();
-					foreach (var type in types)
-					{
-						if (processedTypes.Contains(type)) continue;
+			Registry.Settings.Clear();
+			var processedTypes = new HashSet<Type>();
 
+#if UNITY_EDITOR
+			// Fast path for Editor using Unity's TypeCache (Zero reflection cost over assemblies)
+			var fields = UnityEditor.TypeCache.GetFieldsWithAttribute<ConfigAttribute>();
+			foreach (var field in fields)
+			{
+				var rootType = GetTopmostStaticDeclaringType(field.DeclaringType);
+				if (rootType != null && !processedTypes.Contains(rootType))
+				{
+					if (rootType.IsClass && rootType.IsSealed && rootType.IsAbstract)
+						DiscoverSettingsInType(rootType, rootType.Name, processedTypes);
+				}
+			}
+#else
+			// Fast path for runtime using pre-baked ScriptableObject
+			var cache = Resources.Load<ConfigTypeCacheSO>("PandoraConfigCache");
+			if (cache != null && cache.ConfigTypes != null && cache.ConfigTypes.Count > 0)
+			{
+				foreach (var typeName in cache.ConfigTypes)
+				{
+					var type = Type.GetType(typeName);
+					if (type != null && !processedTypes.Contains(type))
+					{
 						if (type.IsClass && type.IsSealed && type.IsAbstract)
 							DiscoverSettingsInType(type, type.Name, processedTypes);
 					}
 				}
-				catch (ReflectionTypeLoadException)
+			}
+			else
+			{
+				// Fallback to full assembly scan (slow path)
+				PandoraLogger.LogConfigWarning("PandoraConfigCache not found! Falling back to slow assembly scan. Please run the Pandora Config Preprocessor before building.");
+				var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+				foreach (var assembly in assemblies)
 				{
-					// Ignore assemblies that fail to load types
+					try
+					{
+						var types = assembly.GetTypes();
+						foreach (var type in types)
+						{
+							if (processedTypes.Contains(type)) continue;
+
+							if (type.IsClass && type.IsSealed && type.IsAbstract)
+								DiscoverSettingsInType(type, type.Name, processedTypes);
+						}
+					}
+					catch (ReflectionTypeLoadException) { }
 				}
+			}
+#endif
+		}
+
+		private static Type GetTopmostStaticDeclaringType(Type type)
+		{
+			if (type == null) return null;
+			Type topmostStatic = type.IsClass && type.IsSealed && type.IsAbstract ? type : null;
+
+			Type current = type.DeclaringType;
+			while (current != null)
+			{
+				if (current.IsClass && current.IsSealed && current.IsAbstract)
+					topmostStatic = current;
+				else
+					break;
+				
+				current = current.DeclaringType;
+			}
+			return topmostStatic;
 		}
 
 		/// <summary>
@@ -399,7 +437,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					var attribute = field.GetCustomAttribute<ConfigAttribute>();
 					if (attribute != null)
 					{
-						var existingSetting = Settings.FirstOrDefault(_s => _s.Key == attribute.Key);
+						var existingSetting = Registry.Settings.FirstOrDefault(_s => _s.Key == attribute.Key);
 						if (existingSetting != null)
 						{
 							var richMessage =
@@ -416,7 +454,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 						{
 							var entry = (IConfigEntry)Activator.CreateInstance(field.FieldType, attribute, _groupName);
 							field.SetValue(null, entry);
-							Settings.Add(entry);
+							Registry.Settings.Add(entry);
 						}
 						catch (TargetInvocationException ex)
 						{

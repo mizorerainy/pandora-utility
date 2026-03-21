@@ -52,7 +52,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				return;
 			}
 
-			if (!Parsers.Contains(_parser)) Parsers.Add(_parser);
+			if (!Registry.Parsers.Contains(_parser)) Registry.Parsers.Add(_parser);
 		}
 
 		#endregion
@@ -71,7 +71,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </returns>
 		internal static IConfigValueParser GetParserForType(Type _type)
 		{
-			return Parsers.FirstOrDefault(_p => _p.CanParse(_type));
+			return Registry.Parsers.FirstOrDefault(_p => _p.CanParse(_type));
 		}
 
 		#endregion

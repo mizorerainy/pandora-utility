@@ -67,7 +67,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				yamlData = new Dictionary<string, object>();
 			}
 
-			foreach (var setting in Settings)
+			foreach (var setting in Registry.Settings)
 			{
 				// The key in the flattened dictionary will be the full path (e.g., "Group.SubGroup.Key")
 				var fullKey = $"{setting.GroupName}.{setting.Key}";
@@ -153,7 +153,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
 
-			var topLevelGroups = Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct().OrderBy(_g => _g);
+			var topLevelGroups = Registry.Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct().OrderBy(_g => _g);
 
 			foreach (var topLevelGroup in topLevelGroups)
 			{
@@ -178,7 +178,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			string indent = new string(' ', _indentLevel * 2);
 
-			var directSettings = Settings.Where(_s => _s.GroupName == _currentPath).OrderBy(_s => _s.Key);
+			var directSettings = Registry.Settings.Where(_s => _s.GroupName == _currentPath).OrderBy(_s => _s.Key);
 			foreach (var setting in directSettings)
 			{
 				if (!string.IsNullOrEmpty(setting.Description))
@@ -193,7 +193,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				_sb.AppendLine($"{indent}{setting.Key}: {val}");
 			}
 
-			var childrenGroups = Settings
+			var childrenGroups = Registry.Settings
 				.Where(_s => _s.GroupName.StartsWith(_currentPath + "."))
 				.Select(_s => _s.GroupName.Substring(_currentPath.Length + 1).Split('.')[0])
 				.Distinct()

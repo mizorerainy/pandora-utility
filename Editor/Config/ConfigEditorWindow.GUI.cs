@@ -148,6 +148,28 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				drawSidebarNodeRecursive(grp, 0, "");
 			}
 			EditorGUILayout.EndScrollView();
+
+			GUILayout.Space(5);
+
+			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
+			var oldColorAction = GUI.backgroundColor;
+			GUI.backgroundColor = new Color(0.4f, 0.8f, 0.4f, 1f); // Green tint
+			if (GUILayout.Button("Save Changes", GUILayout.Height(30))) SaveChangesAndNotify();
+			GUI.backgroundColor = oldColorAction;
+			EditorGUI.EndDisabledGroup();
+
+			GUILayout.Space(2);
+
+			if (GUILayout.Button("Reset to Defaults", GUILayout.Height(30)))
+			{
+				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+				if (EditorUtility.DisplayDialog("Reset All to Defaults?",
+						$"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.",
+						"Reset", "Cancel")) ResetToDefaultsAndNotify();
+			}
+
+			GUILayout.Space(5);
+
 			EditorGUILayout.EndVertical();
 
 			// RIGHT PANE
@@ -183,21 +205,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 			EditorGUILayout.EndScrollView();
 
-			EditorGUILayout.BeginHorizontal();
-
-			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
-			if (GUILayout.Button("Save Changes", GUILayout.Height(30))) SaveChangesAndNotify();
-			EditorGUI.EndDisabledGroup();
-
-			if (GUILayout.Button("Reset to Defaults", GUILayout.Height(30)))
-			{
-				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
-				if (EditorUtility.DisplayDialog("Reset All to Defaults?",
-						$"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.",
-						"Reset", "Cancel")) ResetToDefaultsAndNotify();
-			}
-
-			EditorGUILayout.EndHorizontal();
 			EditorGUILayout.EndVertical(); // End Right Pane
 			EditorGUILayout.EndHorizontal(); // End Main Area
 			EditorGUI.EndDisabledGroup();

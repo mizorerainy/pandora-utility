@@ -156,7 +156,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			await InitializeAsync();
 
 			PandoraLogger.LogConfig("Resetting all settings to their default values...");
-			foreach (var setting in Settings) setting.SetToDefault();
+			foreach (var setting in Registry.Settings) setting.SetToDefault();
 
 			// Now, save these default values back to the file.
 			await SaveAsync();

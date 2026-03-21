@@ -69,7 +69,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				PandoraLogger.LogConfigError($"Failed to read INI config. Error: {e.Message}");
 			}
 
-			foreach (var setting in Settings)
+			foreach (var setting in Registry.Settings)
 				if (fileValues.TryGetValue(setting.Key, out var rawValue)) setting.SetValueFromString(rawValue);
 				else setting.SetToDefault();
 		}
@@ -101,7 +101,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
-			var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
 			foreach (var group in groupedSettings)
 			{
 				sb.AppendLine("\n#==================================================");
@@ -139,7 +139,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
-			var groupedSettings = Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
 			foreach (var group in groupedSettings)
 			{
 				sb.AppendLine("\n#==================================================");

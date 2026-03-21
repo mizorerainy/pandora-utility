@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Platform-specific configuration file paths
 - Reset functionality to restore all settings to defaults
 - Value change event system for reactive programming
+- Extracted global state into an isolated `ConfigRegistry` for improved testability and mockability
+- Zero-reflection initialization using `UnityEditor.TypeCache` and a runtime `ConfigTypeCacheSO` scriptable object
+- Editor-time validation for early feedback on unsupported configuration types
 
 #### AetherLink Network System  
 - UDP/TCP hybrid networking solution for Unity projects

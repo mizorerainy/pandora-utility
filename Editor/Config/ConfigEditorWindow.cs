@@ -140,16 +140,14 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		private void RefreshSettings()
 		{
 			ConfigLoader.EnsureInitialized();
-			var settingsField = typeof(ConfigLoader).GetField("Settings", BindingFlags.NonPublic | BindingFlags.Static);
-			if (settingsField == null)
+			var settings = ConfigLoader.Registry.Settings;
+			if (settings == null)
 			{
 				_RootNode = null;
 				Debug.LogError(
-					"[ConfigEditorWindow] Could not find 'Settings' field in ConfigLoader. Cannot display settings.");
+					"[ConfigEditorWindow] Could not find settings in ConfigLoader.Registry. Cannot display settings.");
 				return;
 			}
-
-			var settings = (List<IConfigEntry>)settingsField.GetValue(null);
 			_RootNode = new ConfigNode { Name = "Root" };
 
 			// Build the tree structure from the flat list of settings
