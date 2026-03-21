@@ -9,7 +9,7 @@
 // - Master/Slave architecture with UDP auto-discovery.
 // - Efficient, point-to-point TCP heartbeats for connection stability.
 // - Robust binary protocols for both UDP (discovery) and TCP (data transfer).
-// - Extensible Serialization: Register any custom class/struct via an interface (IAetherSerializable).
+// - High-Performance Serialization: Zero-allocation structuring using generic structs and PtrToStructure/StructureToPtr.
 // - Dual API System:
 //   1. Inspector-friendly UnityEvents for designers.
 //   2. A modern, safe, and flexible async API for programmers (Managed Handlers & Advanced Streams).
@@ -23,7 +23,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using MizoreRainy.Pandora;
-using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
 #if HAVE_CYSHARP_UNITASK
@@ -156,7 +155,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					Buffer.BlockCopy(bodyBuffer, 0, fullPacket, _MAGIC_OFFSET + _PAYLOAD_LENGTH_OFFSET, bodySize);
 
 					// Validate packet integrity
-					if (!ValidatePacketIntegrity(fullPacket))
+					if (!ValidatePacketIntegrity(fullPacket, out ushort packetChecksum))
 					{
 						PandoraLogger.LogNetworkError("Packet integrity check failed. Dropping packet.");
 						_Statistics.CorruptedPackets++;
@@ -184,7 +183,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					if (m_Settings.DebugTcpMessages)
 						PandoraLogger.LogNetwork($"Received TCP packet: Header={header}, Size={fullPacket.Length} bytes");
 
-					var response = new PacketResponse(header, payload, RemoteEndPoint);
+					var localEndpointStr = _TCPConnection?.Client?.LocalEndPoint?.ToString() ?? "Unknown";
+					var response = new PacketResponse(header, payload, RemoteEndPoint, localEndpointStr, packetChecksum);
 
 					// Write to the channel for the async API
 					_OnPacketReceivedChannel.Writer.TryWrite(response);
@@ -215,8 +215,9 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		/// <returns>
 		///     Returns true if the packet's structure and checksum are valid; otherwise, false.
 		/// </returns>
-		private bool ValidatePacketIntegrity(byte[] _packet)
+		private bool ValidatePacketIntegrity(byte[] _packet, out ushort _checksum)
 		{
+			_checksum = 0;
 			const ushort minPacketSize = _MAGIC_OFFSET + _HEADER_OFFSET + _PAYLOAD_LENGTH_OFFSET + _CHECKSUM_OFFSET +
 										 _MAGIC_OFFSET;
 			if (_packet.Length < minPacketSize) return false; // Minimum packet size
@@ -231,6 +232,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			var calculatedChecksum =
 				CalculateFletcher16(_packet, 0, _packet.Length - (_CHECKSUM_OFFSET + _MAGIC_OFFSET));
 
+			_checksum = calculatedChecksum;
 			return receivedChecksum == calculatedChecksum;
 		}
 

@@ -9,7 +9,7 @@
 // - Master/Slave architecture with UDP auto-discovery.
 // - Efficient, point-to-point TCP heartbeats for connection stability.
 // - Robust binary protocols for both UDP (discovery) and TCP (data transfer).
-// - Extensible Serialization: Register any custom class/struct via an interface (IAetherSerializable).
+// - High-Performance Serialization: Zero-allocation structuring using generic structs and PtrToStructure/StructureToPtr.
 // - Dual API System:
 //   1. Inspector-friendly UnityEvents for designers.
 //   2. A modern, safe, and flexible async API for programmers (Managed Handlers & Advanced Streams).
@@ -23,7 +23,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using MizoreRainy.Pandora;
-using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
 #if HAVE_CYSHARP_UNITASK
@@ -123,80 +122,57 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			/// <summary>The network endpoint of the sender.</summary>
 			public IPEndPoint RemoteEndPoint { get; }
 
-			public PacketResponse(ushort _header, byte[] _data, IPEndPoint _remoteEndPoint)
+			/// <summary>The IP address of the sender as a string alias.</summary>
+			public string Sender => RemoteEndPoint?.ToString() ?? "Unknown";
+
+			/// <summary>The local IP address acting as the receiver.</summary>
+			public string Receiver { get; }
+
+			/// <summary>The time the packet was received locally, based on Time.time.</summary>
+			public float Timestamp { get; }
+
+			/// <summary>The integrity checksum computed for this packet.</summary>
+			public ushort Checksum { get; }
+
+			public PacketResponse(ushort _header, byte[] _data, IPEndPoint _remoteEndPoint, string _receiver, ushort _checksum)
 			{
 				Header = _header;
 				Data = _data;
 				RemoteEndPoint = _remoteEndPoint;
+				Receiver = _receiver;
+				Timestamp = Time.time;
+				Checksum = _checksum;
 			}
 
 			/// <summary>
-			///     Reads objects from the binary data stream.
+			///     Deserializes the raw byte data payload into an unmanaged struct (Zero-Allocation).
 			/// </summary>
-			/// <returns>Array of objects in the order they were written.</returns>
-			public object[] ReadObjects()
+			/// <typeparam name="T">An unmanaged struct representing the data payload.</typeparam>
+			/// <returns>The deserialized struct.</returns>
+			public T ReadAs<T>() where T : unmanaged
 			{
 				if (Data == null || Data.Length == 0)
-					return Array.Empty<object>();
+					return default;
 
-				var result = new List<object>();
-				using (var stream = new MemoryStream(Data))
-				using (var reader = new BinaryReader(stream))
+				int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+				if (Data.Length < size)
 				{
-					try
-					{
-						while (stream.Position < stream.Length)
-						{
-							var typeCode = (TypeCode)reader.ReadByte();
-							var obj = ReadObjectByType(reader, typeCode);
-							result.Add(obj);
-						}
-					}
-					catch (Exception ex)
-					{
-						PandoraLogger.LogNetworkError($"Failed to read objects from packet: {ex.Message}");
-					}
+					PandoraLogger.LogNetworkError($"Packet data is too small to read as {typeof(T).Name}");
+					return default;
 				}
 
-				return result.ToArray();
-			}
-
-			/// <summary>
-			///     Reads a single object from a binary stream based on its TypeCode.
-			/// </summary>
-			/// <param name="_reader">The binary reader to read from.</param>
-			/// <param name="_typeCode">The TypeCode indicating what type of data to read.</param>
-			/// <returns>The deserialized object.</returns>
-			private object ReadObjectByType(BinaryReader _reader, TypeCode _typeCode)
-			{
-				switch (_typeCode)
+				var handle = System.Runtime.InteropServices.GCHandle.Alloc(Data, System.Runtime.InteropServices.GCHandleType.Pinned);
+				try
 				{
-					case TypeCode.Boolean: return _reader.ReadBoolean();
-					case TypeCode.Byte: return _reader.ReadByte();
-					case TypeCode.SByte: return _reader.ReadSByte();
-					case TypeCode.Int16: return _reader.ReadInt16();
-					case TypeCode.UInt16: return _reader.ReadUInt16();
-					case TypeCode.Int32: return _reader.ReadInt32();
-					case TypeCode.UInt32: return _reader.ReadUInt32();
-					case TypeCode.Int64: return _reader.ReadInt64();
-					case TypeCode.UInt64: return _reader.ReadUInt64();
-					case TypeCode.Single: return _reader.ReadSingle();
-					case TypeCode.Double: return _reader.ReadDouble();
-					case TypeCode.String: return _reader.ReadString();
-					case TypeCode.Object: // This now signifies a custom IAetherSerializable type
-						var typeId = _reader.ReadUInt16();
-						if (CustomTypeFactories.TryGetValue(typeId, out var factory))
-						{
-							var instance = factory();
-							instance.Deserialize(_reader);
-							return instance;
-						}
-
-						throw new NotSupportedException($"Received an unregistered custom type ID: {typeId}");
-					default:
-						throw new NotSupportedException($"Type {_typeCode} is not supported");
+					return System.Runtime.InteropServices.Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject());
+				}
+				finally
+				{
+					handle.Free();
 				}
 			}
+
+
 		}
 
 		/// <summary>A UnityEvent that can pass PacketResponse objects, making it usable in the Inspector.</summary>

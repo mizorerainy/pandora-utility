@@ -9,7 +9,7 @@
 // - Master/Slave architecture with UDP auto-discovery.
 // - Efficient, point-to-point TCP heartbeats for connection stability.
 // - Robust binary protocols for both UDP (discovery) and TCP (data transfer).
-// - Extensible Serialization: Register any custom class/struct via an interface (IAetherSerializable).
+// - High-Performance Serialization: Zero-allocation structuring using generic structs and PtrToStructure/StructureToPtr.
 // - Dual API System:
 //   1. Inspector-friendly UnityEvents for designers.
 //   2. A modern, safe, and flexible async API for programmers (Managed Handlers & Advanced Streams).
@@ -23,7 +23,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using MizoreRainy.Pandora;
-using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
 #if HAVE_CYSHARP_UNITASK

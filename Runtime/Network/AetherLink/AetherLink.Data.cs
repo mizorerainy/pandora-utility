@@ -9,7 +9,7 @@
 // - Master/Slave architecture with UDP auto-discovery.
 // - Efficient, point-to-point TCP heartbeats for connection stability.
 // - Robust binary protocols for both UDP (discovery) and TCP (data transfer).
-// - Extensible Serialization: Register any custom class/struct via an interface (IAetherSerializable).
+// - High-Performance Serialization: Zero-allocation structuring using generic structs and PtrToStructure/StructureToPtr.
 // - Dual API System:
 //   1. Inspector-friendly UnityEvents for designers.
 //   2. A modern, safe, and flexible async API for programmers (Managed Handlers & Advanced Streams).
@@ -23,7 +23,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using MizoreRainy.Pandora;
-using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
 #if HAVE_CYSHARP_UNITASK
@@ -94,124 +93,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 #endif
 
-		/// <summary>
-		///     Sends an array of objects as binary data in a fire-and-forget manner.
-		/// </summary>
-		/// <param name="_header">The ushort header code identifying the message type.</param>
-		/// <param name="_data">Array of objects to send.</param>
-		public void SendData(ushort _header, params object[] _data)
-		{
-#if HAVE_CYSHARP_UNITASK
-			SendDataAsync(_header, _data).Forget();
-#endif
-		}
 
-#if HAVE_CYSHARP_UNITASK
-		/// <summary>
-		///     Asynchronously sends an array of objects as binary data and waits for the send operation to complete.
-		/// </summary>
-		/// <param name="_header">The ushort header code identifying the message type.</param>
-		/// <param name="_data">Array of objects to send.</param>
-		/// <returns>A UniTask that completes when the data has been sent.</returns>
-		public async UniTask SendDataAsync(ushort _header, params object[] _data)
-		{
-			if (_header == _TCP_CMD_HEARTBEAT)
-				throw new ArgumentException(
-					$"Header value {_TCP_CMD_HEARTBEAT} is reserved for internal AetherLink use and cannot be used to send data.",
-					nameof(_header));
-
-			if (_data == null)
-			{
-				PandoraLogger.LogNetworkError("Data array cannot be null.");
-				return;
-			}
-
-			try
-			{
-				var payload = SerializeObjects(_data);
-
-				if (payload.Length > m_Settings.MaxPacketSize)
-				{
-					PandoraLogger.LogNetworkError(
-						$"Packet size ({payload.Length}) exceeds maximum allowed size ({m_Settings.MaxPacketSize}).");
-					return;
-				}
-
-				await SendDataInternalAsync(_header, payload);
-			}
-			catch (Exception ex)
-			{
-				PandoraLogger.LogNetworkError($"Failed to serialize or send data for header {_header}: {ex.Message}");
-			}
-		}
-#endif
-
-		/// <summary>
-		///     Serializes an array of objects into a compact binary format.
-		/// </summary>
-		/// <param name="_objects">The array of objects to serialize.</param>
-		/// <returns>A byte array representing the serialized objects.</returns>
-		private byte[] SerializeObjects(object[] _objects)
-		{
-			using var stream = new MemoryStream();
-			using var writer = new BinaryWriter(stream);
-			foreach (var obj in _objects) WriteObject(writer, obj);
-			return stream.ToArray();
-		}
-
-		/// <summary>
-		///     Writes a single object to the binary stream based on its type.
-		/// </summary>
-		/// <param name="_writer">The binary writer to write to.</param>
-		/// <param name="_obj">The object to write.</param>
-		private void WriteObject(BinaryWriter _writer, object _obj)
-		{
-			if (_obj == null)
-			{
-				_writer.Write((byte)TypeCode.Empty);
-				return;
-			}
-
-			var type = _obj.GetType();
-
-			if (_obj is IAetherSerializable serializable)
-			{
-				if (CustomTypeIds.TryGetValue(type, out var typeId))
-				{
-					_writer.Write((byte)TypeCode.Object); // Signal a custom-registered type
-					_writer.Write(typeId);
-					serializable.Serialize(_writer);
-				}
-				else
-				{
-					throw new NotSupportedException(
-						$"Type {type.Name} implements IAetherSerializable but has not been registered with AetherLink.RegisterSerializableType().");
-				}
-			}
-			else // Handle primitive types
-			{
-				var typeCode = Type.GetTypeCode(type);
-				_writer.Write((byte)typeCode);
-				switch (typeCode)
-				{
-					case TypeCode.Boolean: _writer.Write((bool)_obj); break;
-					case TypeCode.Byte: _writer.Write((byte)_obj); break;
-					case TypeCode.SByte: _writer.Write((sbyte)_obj); break;
-					case TypeCode.Int16: _writer.Write((short)_obj); break;
-					case TypeCode.UInt16: _writer.Write((ushort)_obj); break;
-					case TypeCode.Int32: _writer.Write((int)_obj); break;
-					case TypeCode.UInt32: _writer.Write((uint)_obj); break;
-					case TypeCode.Int64: _writer.Write((long)_obj); break;
-					case TypeCode.UInt64: _writer.Write((ulong)_obj); break;
-					case TypeCode.Single: _writer.Write((float)_obj); break;
-					case TypeCode.Double: _writer.Write((double)_obj); break;
-					case TypeCode.String: _writer.Write((string)_obj); break;
-					default:
-						throw new NotSupportedException(
-							$"Type {type.Name} is not supported for binary serialization. Implement IAetherSerializable and register the type.");
-				}
-			}
-		}
 
 #if HAVE_CYSHARP_UNITASK
 

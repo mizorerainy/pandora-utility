@@ -9,7 +9,7 @@
 // - Master/Slave architecture with UDP auto-discovery.
 // - Efficient, point-to-point TCP heartbeats for connection stability.
 // - Robust binary protocols for both UDP (discovery) and TCP (data transfer).
-// - Extensible Serialization: Register any custom class/struct via an interface (IAetherSerializable).
+// - High-Performance Serialization: Zero-allocation structuring using generic structs and PtrToStructure/StructureToPtr.
 // - Dual API System:
 //   1. Inspector-friendly UnityEvents for designers.
 //   2. A modern, safe, and flexible async API for programmers (Managed Handlers & Advanced Streams).
@@ -23,7 +23,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using MizoreRainy.Pandora;
-using MizoreRainy.Pandora.NetworkUtility.Interfaces;
 using UnityEngine;
 using UnityEngine.Events;
 #if HAVE_CYSHARP_UNITASK
@@ -79,60 +78,6 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Custom Type Registry
-
-		private static readonly Dictionary<ushort, Func<IAetherSerializable>> CustomTypeFactories = new();
-		private static readonly Dictionary<Type, ushort> CustomTypeIds = new();
-
-		/// <summary>
-		///     Registers a custom type for serialization with AetherLink.
-		///     This must be called once at startup for each custom type you wish to send.
-		///     A great place to call this is in a method marked with [RuntimeInitializeOnLoadMethod].
-		/// </summary>
-		/// <typeparam name="T">The type to register. Must implement IAetherSerializable and have a parameterless constructor.</typeparam>
-		/// <param name="_typeId">
-		///     A unique ushort ID for this type. This ID must be the same in both the sending and receiving
-		///     applications.
-		/// </param>
-		/// <param name="_override">
-		///     If true, allows overwriting an existing type registration with the same ID. If false, throws an
-		///     exception when attempting to register a duplicate ID.
-		/// </param>
-		/// <exception cref="InvalidOperationException">
-		///     Thrown when the type or type ID is already registered and _override is
-		///     false.
-		/// </exception>
-		public static void RegisterSerializableType<T>(ushort _typeId, bool _override = false)
-			where T : IAetherSerializable, new()
-		{
-			var type = typeof(T);
-
-			if (CustomTypeIds.TryGetValue(type, out var oldId))
-				throw new InvalidOperationException(
-					$"Type {type.Name} is already registered with ID {oldId}. Cannot register the same type twice.");
-
-			if (CustomTypeFactories.TryGetValue(_typeId, out var factory))
-			{
-				var oldType = factory().GetType();
-				if (_override)
-				{
-					PandoraLogger.LogNetworkWarning(
-						$"Type ID {_typeId} is already registered to {oldType.Name}. Overwriting with {type.Name}.");
-					CustomTypeIds.Remove(oldType);
-				}
-				else
-				{
-					throw new InvalidOperationException(
-						$"Type ID {_typeId} is already registered to {oldType.Name}. Cannot register the same ID twice.");
-				}
-			}
-
-			CustomTypeIds[type] = _typeId;
-			CustomTypeFactories[_typeId] = () => new T();
-			PandoraLogger.LogNetwork($"Registered custom type '{type.Name}' with ID {_typeId}.");
-		}
-
-		#endregion
 
 
 		#region Constants
