@@ -1,0 +1,23 @@
+{
+    "name": "MizoreRainy.Pandora.Runtime.Config",
+    "rootNamespace": "MizoreRainy.Pandora.Config",
+    "references": [
+        "VYaml.Core",
+        "MizoreRainy.Pandora.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "jp.hadashikick.vyaml",
+            "expression": "0.27.1",
+            "define": "HAVE_VYAML"
+        }
+    ],
+    "noEngineReferences": false
+}

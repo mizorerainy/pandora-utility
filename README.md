@@ -1,101 +1,139 @@
-# Pandora Unity Utility Package
+# Pandora Utility
 
-A comprehensive Unity utility package providing networking solutions and other helpful tools for Unity game development.
+A comprehensive Unity development toolkit that provides essential utilities for configuration management, build automation, and networking capabilities.
 
-## Features
+## Features Overview
 
-- **AetherLink Network System**: Advanced networking utilities for Unity projects for quick 1–1 connection in Local Area Network.
-- **Editor Tools**: Development tools to enhance your Unity workflow
+### 🔧 Configuration System
+- **Dual Format Support**: Both INI (.txt) and YAML (.yaml) configuration files
+- **Automatic Discovery**: Finds and registers configuration settings across your project
+- **Live Reloading**: Real-time config updates in Editor and builds
+- **Type Safety**: Strongly-typed configuration entries with compile-time checking
+- **Custom Parsers**: Support for complex types through extensible parsing system
+
+### 🏗️ Build Utility
+- **Automated Build Pipeline**: Streamlined build process with customizable settings
+- **Platform Management**: Easy switching and building for multiple platforms
+- **Build Configurations**: Manage different build variants and settings
+- **Post-Build Actions**: Automated post-processing and deployment tasks
+
+### 🌐 Network Features (AetherLink)
+- **Cross-Platform Networking**: UDP/TCP hybrid networking solution
+- **Master-Slave Architecture**: Automatic role assignment and management
+- **Real-time Communication**: Low-latency data transmission
+- **Auto-Discovery**: Automatic peer discovery on local networks
+- **Connection Management**: Robust connection handling with reconnection support
+- **Serialization System**: Built-in object serialization for network transmission
+
+## Quick Start
+
+### Configuration System
+```csharp
+// Define settings
+public static class GameSettings // Needed to be static class
+{
+    [Config("PlayerName", "Anonymous", "The player's display name")]
+    public static readonly ConfigEntry<string> PlayerName;// Needed to be static field
+}
+
+// Initialize (required by default)
+await ConfigLoader.InitializeAsync();
+
+// Use settings
+string name = GameSettings.PlayerName.Value;
+GameSettings.PlayerName.Value = "NewName"; // Auto-saves
+```
+
+
+### AetherLink Networking
+```csharp
+// Initialize AetherLink
+var settings = AetherLink.Settings.Default;
+AetherLink.Instance.Initialize(settings);
+AetherLink.Instance.StartLink();
+
+// Send data
+AetherLink.Instance.SendData(1001, "Hello", 42, true);
+
+// Receive data
+await foreach(var packet in AetherLink.Instance.OnDataReceived())
+{
+    var objects = packet.ReadObjects();
+    // Handle received data
+}
+```
+
+
+## Package Structure
+
+### Core Components
+- **ConfigLoader**: Configuration management system
+- **AetherLink**: Network communication framework
+- **Build Utilities**: Automated build and deployment tools
+- **Editor Tools**: Unity Editor integration and windows
+
+### Assembly Definitions
+- `MizoreRainy.Pandora.Runtime.*`: Runtime components
+- `MizoreRainy.Pandora.Editor.*`: Editor-only tools and utilities
+- `MizoreRainy.Pandora.*.AetherLink`: Network-specific modules
+
+## Configuration
+
+### Settings Window
+Access package settings via **Window → Pandora → Settings**:
+- **Config Loader**: Enable/disable auto-initialization
+- **Format Options**: Switch between INI and YAML formats
+- **Dependencies**: Install required packages (VYaml, UniTask)
+
+### Build Setup
+Configure build settings via **Window → Pandora → Build Tools**:
+- **Target Platforms**: Select build targets
+- **Build Configurations**: Manage build variants
+- **Output Settings**: Configure build output paths
+
+### Network Configuration
+Set up AetherLink via **Window → Pandora → Network**:
+- **Connection Settings**: Configure network parameters
+- **Discovery Options**: Set up peer discovery
+- **Protocol Settings**: UDP/TCP configuration options
 
 ## Requirements
 
-- Unity 2021.3 or later (6.0+ for **Build Utility**)
-- Compatible with Unity Package Manager
+### Core Requirements
+- Unity 2021.3 or later
+- .NET Framework 4.7.1 or .NET Standard 2.0
 
-## Installation
+### Optional Dependencies
+- **UniTask**: Required for async operations (auto-installable)
+- **VYaml**: Required for YAML configuration support (auto-installable)
 
-### Via Git URL (Recommended)
+### Supported Platforms
+- **Editor**: Full feature set available
+- **Standalone**: Windows, macOS, Linux
+- **Mobile**: iOS, Android (limited networking features)
+- **Console**: PlayStation, Xbox, Nintendo Switch
 
-1. Open Unity and go to **Window → Package Manager**
-2. Click the **+** button in the top-left corner
-3. Select **Add package from git URL...**
-4. Enter the following URL:
-   ```
-   https://github.com/mizorerainy/pandora-unity-package.git
-   ```
-5. Click **Add**
+## Getting Started
 
-### Via Package Manager (Local)
+1. **Import the Package**: Add Pandora Utility to your Unity project
+2. **Run Package Setup**: Use **Window → Pandora → Package Setup** to install dependencies
+3. **Configure Settings**: Access **Window → Pandora → Settings** to configure features
+4. **Initialize Systems**: Call initialization methods for the features you need
 
-1. Clone or download this repository
-2. Open Unity and go to **Window → Package Manager**
-3. Click the **+** button and select **Add package from disk...**
-4. Navigate to the package folder and select `package.json`
-
-## Package Structure
-```
-├── Runtime/
-│   └── Network/
-│       └── AetherLink/          # Advanced networking system
-├── Editor/                      # Editor-only utilities
-├── Documentation~/              # Additional documentation (if available)
-├── package.json                 # Package manifest
-├── CHANGELOG.md                 # Version history
-└── LICENSE                      # License information
-```
 ## Documentation
 
-- Check the `CHANGELOG.md` for version history and updates
-- Browse the source code for detailed API usage
-- Each script includes inline documentation and comments
-
-## API Reference
-
-### AetherLink Network System
-
-The AetherLink system provides advanced networking capabilities for Unity projects. Key elements include:
-
-- Master-Slave connection architecture
-- Automatic network discovery on LAN
-- Packet-based data transmission with headers
-- Built-in serialization for common Unity types
-- Network statistics and connection monitoring
-
-*Complete API documentation available in `Documentation~/api-reference.md`*
-
-## Contributing
-
-We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
-
-### Development Setup
-
-1. Fork this repository
-2. Clone your fork locally
-3. Create a new branch for your feature
-4. Make your changes and test thoroughly
-5. Submit a pull request
-
-## Versioning
-
-This package follows [Semantic Versioning](https://semver.org/). See `CHANGELOG.md` for version history.
-
-## License
-
-This project is licensed under the terms specified in the `LICENSE` file.
+Detailed documentation for each component:
+- **Configuration System**: Complete guide to setting up and using the config system
+- **AetherLink Networking**: Network programming guide and API reference
+- **Build Utilities**: Build automation and deployment workflows
+- **Editor Tools**: Extending and customizing the Unity Editor integration
 
 ## Support
 
-- **Documentation**: Complete documentation available in `Documentation~/` folder
-- **API Reference**: Detailed API documentation with examples
-- **Tutorials**: Step-by-step guides for common scenarios
+- **Unity Forum**: Community support and discussions
+- **GitHub Issues**: Bug reports and feature requests
+- **Documentation Wiki**: Comprehensive guides and tutorials
 
-## Compatibility
+## License
 
-- **Unity Version**: 2021.3+
-- **Platforms**: All platforms supported by Unity
-- **Rendering**: Compatible with Built-in, URP, and HDRP
-- **Network**: Local Area Network (LAN) focused, supports 1-to-1 connections
-
----
-
-*Made with ❤️ for the Unity community*# pandora-utility
+This package is part of the Pandora Utility framework.

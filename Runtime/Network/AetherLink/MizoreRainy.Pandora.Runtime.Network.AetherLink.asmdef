@@ -1,0 +1,27 @@
+{
+    "name": "MizoreRainy.Pandora.Runtime.Network.AetherLink",
+    "rootNamespace": "MizoreRainy.Pandora.Network.AetherLink",
+    "references": [
+        "MizoreRainy.Pandora.Runtime",
+        "MizoreRainy.Pandora.Runtime.Network",
+        "UniTask",
+        "UniTask.Linq"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "HAVE_CYSHARP_UNITASK"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "2.0.0",
+            "define": "HAVE_CYSHARP_UNITASK"
+        }
+    ],
+    "noEngineReferences": false
+}
