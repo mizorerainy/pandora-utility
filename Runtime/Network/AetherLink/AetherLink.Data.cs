@@ -45,6 +45,56 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		#region Data Sending
 
 		/// <summary>
+		///     Sends a zero-allocation generic struct by converting it directly to bytes. (High Performance)
+		/// </summary>
+		/// <param name="_header">The ushort header code identifying the message type.</param>
+		/// <param name="_data">The unmanaged struct containing the data.</param>
+		public void SendData<T>(ushort _header, T _data) where T : unmanaged
+		{
+#if HAVE_CYSHARP_UNITASK
+			SendDataAsync(_header, _data).Forget();
+#endif
+		}
+
+#if HAVE_CYSHARP_UNITASK
+		/// <summary>
+		///     Asynchronously sends a zero-allocation generic struct.
+		/// </summary>
+		public async UniTask SendDataAsync<T>(ushort _header, T _data) where T : unmanaged
+		{
+			if (_header == _TCP_CMD_HEARTBEAT)
+				throw new ArgumentException("Reserved Header.");
+
+			try
+			{
+				int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+				if (size > m_Settings.MaxPacketSize)
+				{
+					PandoraLogger.LogNetworkError($"Packet size ({size}) exceeds maximum allowed size.");
+					return;
+				}
+
+				byte[] payload = new byte[size];
+				var handle = System.Runtime.InteropServices.GCHandle.Alloc(payload, System.Runtime.InteropServices.GCHandleType.Pinned);
+				try
+				{
+					System.Runtime.InteropServices.Marshal.StructureToPtr(_data, handle.AddrOfPinnedObject(), false);
+				}
+				finally
+				{
+					handle.Free();
+				}
+
+				await SendDataInternalAsync(_header, payload);
+			}
+			catch (Exception ex)
+			{
+				PandoraLogger.LogNetworkError($"Failed to prepare memory payload: {ex.Message}");
+			}
+		}
+#endif
+
+		/// <summary>
 		///     Sends an array of objects as binary data in a fire-and-forget manner.
 		/// </summary>
 		/// <param name="_header">The ushort header code identifying the message type.</param>
@@ -203,7 +253,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				var stream = _TCPConnection.GetStream();
 
 				await stream.WriteAsync(packet, 0, packet.Length, _CancellationTokenSource.Token);
-				await stream.FlushAsync(_CancellationTokenSource.Token);
+				// stream.FlushAsync() removed to allow TCP stream to batch network sends when NoDelay is enabled.
 
 				_Statistics.PacketsSent++;
 				_Statistics.BytesSent += packet.Length;
@@ -273,8 +323,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			Buffer.BlockCopy(_payload, 0, packet, offset, _payload.Length);
 			offset += _payload.Length;
 
-			var checksum = CalculateSimpleChecksum(packet, 0, offset);
-			packet[offset] = checksum;
+			var checksum = CalculateFletcher16(packet, 0, offset);
+			Buffer.BlockCopy(BitConverter.GetBytes(checksum), 0, packet, offset, _CHECKSUM_OFFSET);
 			offset += _CHECKSUM_OFFSET;
 
 			Buffer.BlockCopy(MagicEndBytes, 0, packet, offset, MagicEndBytes.Length);
@@ -283,21 +333,20 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 
 		/// <summary>
-		///     Calculates a simple checksum for a specified segment of a byte array.
-		///     The checksum is computed as the sum of the byte values in the range
-		///     defined by the provided offset and length.
+		///     Calculates a robust Fletcher-16 checksum for a specified segment of a byte array, detecting swapped bytes.
 		/// </summary>
-		/// <param name="_data">The byte array containing the data for which the checksum is to be calculated.</param>
-		/// <param name="_offset">
-		///     The zero-based index in the byte array from which to start calculating the checksum.
-		/// </param>
-		/// <param name="_length">The number of bytes to include in the checksum calculation starting from the offset.</param>
-		/// <returns>A single byte representing the calculated checksum of the specified segment.</returns>
-		private byte CalculateSimpleChecksum(byte[] _data, int _offset, int _length)
+		private ushort CalculateFletcher16(byte[] _data, int _offset, int _length)
 		{
-			byte sum = 0;
-			for (var i = _offset; i < _offset + _length; i++) sum += _data[i];
-			return sum;
+			ushort sum1 = 0;
+			ushort sum2 = 0;
+
+			for (var i = _offset; i < _offset + _length; i++)
+			{
+				sum1 = (ushort)((sum1 + _data[i]) % 255);
+				sum2 = (ushort)((sum2 + sum1) % 255);
+			}
+
+			return (ushort)((sum2 << 8) | sum1);
 		}
 
 		/// <summary>
@@ -314,7 +363,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			var packet = new byte[_UDP_PACKET_SIZE];
 			packet[0] = _command;
-			Buffer.BlockCopy(_InstanceId.ToByteArray(), 0, packet, 1, 16);
+			Buffer.BlockCopy(BitConverter.GetBytes(_APP_SIGNATURE), 0, packet, 1, 4);
+			Buffer.BlockCopy(_InstanceId.ToByteArray(), 0, packet, 5, 16);
 			return packet;
 		}
 

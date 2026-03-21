@@ -147,9 +147,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 
 		private const byte _UDP_CMD_HANDSHAKE = 0xAB;
-		private const int _UDP_PACKET_SIZE = 17;
+		private const int _UDP_PACKET_SIZE = 21;
 		private const int _GUID_BYTE_SIZE = 16;
 		private const int _UDP_HEADER_SIZE = _UDP_PACKET_SIZE - _GUID_BYTE_SIZE;
+		private const uint _APP_SIGNATURE = 0x50414E44; // "PAND" magic signature for UDP discovery
 
 		private const ushort _TCP_CMD_HEARTBEAT = 0xFAF0; // Internal heartbeat will not be exposed to the user.
 
@@ -159,7 +160,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		private const int _PAYLOAD_LENGTH_OFFSET = 2;
 		private const int _HEADER_OFFSET = 2;
 		private const int _MAGIC_OFFSET = 2;
-		private const int _CHECKSUM_OFFSET = 1;
+		private const int _CHECKSUM_OFFSET = 2; // using Fletcher-16 (2 bytes)
 
 		private const float _MS_TO_SEC_MULTIPLIER = .001f;
 

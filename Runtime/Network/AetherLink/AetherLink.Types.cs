@@ -101,7 +101,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				HandshakeInterval = 2000,
 				HeartbeatInterval = 1000,
 				HeartbeatTimeout = 5000,
-				MaxPacketSize = 16 * 1024 * 1024,
+				MaxPacketSize = 1024 * 1024, // Reduced to 1MB to prevent large memory allocations by default
 				TcpBufferSize = 8192,
 				DebugUdpMessages = false,
 				DebugTcpMessages = false

@@ -227,9 +227,9 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			var magicEnd = BitConverter.ToUInt16(_packet, _packet.Length - _MAGIC_OFFSET);
 			if (magicEnd != _MAGIC_END) return false;
 
-			var receivedChecksum = _packet[^(_CHECKSUM_OFFSET + _MAGIC_OFFSET)];
+			var receivedChecksum = BitConverter.ToUInt16(_packet, _packet.Length - (_CHECKSUM_OFFSET + _MAGIC_OFFSET));
 			var calculatedChecksum =
-				CalculateSimpleChecksum(_packet, 0, _packet.Length - (_CHECKSUM_OFFSET + _MAGIC_OFFSET));
+				CalculateFletcher16(_packet, 0, _packet.Length - (_CHECKSUM_OFFSET + _MAGIC_OFFSET));
 
 			return receivedChecksum == calculatedChecksum;
 		}
@@ -274,6 +274,9 @@ namespace MizoreRainy.Pandora.NetworkUtility
 					if (result.Buffer.Length != _UDP_PACKET_SIZE) continue;
 
 					var command = result.Buffer[0];
+					var signature = BitConverter.ToUInt32(result.Buffer, 1);
+					if (signature != _APP_SIGNATURE) continue; // Ignore packets not from AetherLink apps
+
 					var guidBytes = new byte[_GUID_BYTE_SIZE];
 					Buffer.BlockCopy(result.Buffer, _UDP_HEADER_SIZE, guidBytes, 0, _GUID_BYTE_SIZE);
 					var senderId = new Guid(guidBytes);
@@ -383,6 +386,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			{
 				client.ReceiveBufferSize = m_Settings.TcpBufferSize;
 				client.SendBufferSize = m_Settings.TcpBufferSize;
+				client.Client.NoDelay = true; // Optimization: Disable Nagle's algorithm
 				await client.ConnectAsync(_masterIp, m_Settings.TcpConnectionPort).AsUniTask()
 					.AttachExternalCancellation(_token);
 				await UniTask.SwitchToMainThread();
@@ -441,6 +445,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		private void HandleNewTcpConnection(TcpClient _client, CancellationToken _token)
 		{
 			_TCPConnection = _client;
+			_TCPConnection.Client.NoDelay = true; // Optimization: Disable Nagle's algorithm
+
 			if (_TCPConnection.Client?.RemoteEndPoint is IPEndPoint remoteEndPoint)
 			{
 				PandoraLogger.LogNetwork($"TCP connection established with {remoteEndPoint.Address}");
@@ -584,6 +590,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 						.AttachExternalCancellation(_token);
 					client.ReceiveBufferSize = m_Settings.TcpBufferSize;
 					client.SendBufferSize = m_Settings.TcpBufferSize;
+					client.Client.NoDelay = true; // Optimization: Disable Nagle's algorithm
 					await UniTask.SwitchToMainThread();
 					HandleNewTcpConnection(client, _token);
 				}
