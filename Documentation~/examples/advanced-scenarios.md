@@ -21,8 +21,8 @@ This tutorial covers sophisticated AetherLink usage patterns for complex applica
 
 Before diving into advanced scenarios, ensure you have:
 
-- Completed the [Simple Connection Tutorial](simple-connection.md)
-- Understanding of [Data Serialization](data-serialization.md)
+- Completed the [AetherLink Setup Tutorial](../tutorials/aetherlink-setup.md)
+- Understanding of [Basic Networking](../tutorials/basic-networking.md)
 - UniTask package installed (for async stream features)
 - C# async/await knowledge
 - Familiarity with cancellation tokens
@@ -46,9 +46,14 @@ The async stream API provides reactive, composable event handling:
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
+// Define zero-allocation payload structs
+public struct HandshakeData { public bool isReady; }
+public struct PlayerDataUpdate { public int playerId; public float health; }
+public struct GameStateUpdate { public int currentLevel; }
+
 public class AsyncStreamExample : MonoBehaviour
 {
-private CancellationTokenSource cancellationSource;
+    private CancellationTokenSource cancellationSource;
 
     async void Start()
     {
@@ -112,8 +117,8 @@ private CancellationTokenSource cancellationSource;
         // Perform async initialization after connection
         await UniTask.Delay(100); // Brief delay
         
-        // Send initial handshake
-        AetherLink.Instance.SendData(5001, "Ready for synchronization");
+        // Send initial handshake using unmanaged struct
+        AetherLink.Instance.SendData(5001, new HandshakeData { isReady = true });
     }
     
     async UniTask ProcessPacket(PacketResponse packet)
@@ -140,7 +145,9 @@ private CancellationTokenSource cancellationSource;
     {
         // Simulate async processing
         await UniTask.Yield();
-        object[] data = packet.ReadObjects();
+        
+        // Read directly as an unmanaged struct with zero allocation
+        PlayerDataUpdate data = packet.ReadAs<PlayerDataUpdate>();
         // Process data...
     }
 }
@@ -183,8 +190,8 @@ var cancellationToken = this.GetCancellationTokenOnDestroy();
     
     Vector3 ExtractPlayerPosition(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        return (Vector3)data[0];
+        // Vector3 is an unmanaged struct, so it can be deserialized seamlessly
+        return packet.ReadAs<Vector3>();
     }
     
     void ProcessPositionBatch(Vector3[] positions)
@@ -246,14 +253,14 @@ var token = this.GetCancellationTokenOnDestroy();
     void OnPlayerDataReceived(PacketResponse packet)
     {
         // This handler only receives packets with header 7001
-        object[] data = packet.ReadObjects();
+        PlayerDataUpdate data = packet.ReadAs<PlayerDataUpdate>();
         ProcessPlayerData(data);
     }
     
     void OnGameStateReceived(PacketResponse packet)
     {
         // This handler only receives packets with header 7002
-        object[] data = packet.ReadObjects();
+        GameStateUpdate data = packet.ReadAs<GameStateUpdate>();
         UpdateGameState(data);
     }
     
@@ -272,12 +279,12 @@ var token = this.GetCancellationTokenOnDestroy();
         // Update network activity indicator
     }
     
-    void ProcessPlayerData(object[] data)
+    void ProcessPlayerData(PlayerDataUpdate data)
     {
         // Process player-specific data
     }
     
-    void UpdateGameState(object[] data)
+    void UpdateGameState(GameStateUpdate data)
     {
         // Update global game state
     }
@@ -461,6 +468,10 @@ public class AdvancedConnectionManager : MonoBehaviour
 ### Async Request-Response System
 
 ```csharp
+public struct RpcRequestHeader { public int requestId; public ushort requestType; }
+public struct PlayerStatsRequest { public int requestId; public ushort requestType; public int playerId; }
+public struct PlayerStatsResponse { public int requestId; public int level; public int score; }
+
 public class RequestResponseSystem : MonoBehaviour
 {
     private readonly Dictionary<int, TaskCompletionSource<PacketResponse>> pendingRequests = 
@@ -483,10 +494,11 @@ public class RequestResponseSystem : MonoBehaviour
         try
         {
             // Send request and wait for response
-            var response = await SendRequestAsync(8001, "GetPlayerStats", "Player123");
+            var request = new PlayerStatsRequest { playerId = 123 };
+            var response = await SendRequestAsync(8001, request);
             
-            object[] responseData = response.ReadObjects();
-            Debug.Log($"Response received: {responseData[0]}");
+            var stats = response.ReadAs<PlayerStatsResponse>();
+            Debug.Log($"Response received: Level {stats.level}, Score {stats.score}");
         }
         catch (TimeoutException)
         {
@@ -498,7 +510,7 @@ public class RequestResponseSystem : MonoBehaviour
         }
     }
     
-    async UniTask<PacketResponse> SendRequestAsync(ushort requestType, params object[] requestData)
+    async UniTask<PacketResponse> SendRequestAsync<T>(ushort requestType, T requestData) where T : unmanaged
     {
         int requestId = requestIdCounter++;
         var tcs = new TaskCompletionSource<PacketResponse>();
@@ -506,20 +518,15 @@ public class RequestResponseSystem : MonoBehaviour
         // Store request for response matching
         pendingRequests[requestId] = tcs;
         
-        // Send request with ID
-        object[] dataWithId = new object[requestData.Length + 2];
-        dataWithId[0] = requestId;
-        dataWithId[1] = requestType;
-        Array.Copy(requestData, 0, dataWithId, 2, requestData.Length);
-        
-        AetherLink.Instance.SendData(7999, dataWithId); // 7999 = request header
+        // requestData should already contain the RequestId and RequestType.
+        // Send the payload unmanaged struct directly
+        AetherLink.Instance.SendData(7999, requestData); // 7999 = request header
         
         // Wait for response with timeout
         var timeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try
         {
-            var response = await tcs.Task.AsUniTask().AttachExternalCancellation(timeoutToken.Token);
-            return response;
+            return await tcs.Task.AsUniTask().AttachExternalCancellation(timeoutToken.Token);
         }
         catch (OperationCanceledException)
         {
@@ -534,13 +541,12 @@ public class RequestResponseSystem : MonoBehaviour
     
     void HandleResponse(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        if (data.Length < 1) return;
+        // First, read the packet as a basic header to extract RequestId
+        var header = packet.ReadAs<RpcRequestHeader>();
         
-        int requestId = (int)data[0];
-        if (pendingRequests.TryGetValue(requestId, out var tcs))
+        if (pendingRequests.TryGetValue(header.requestId, out var tcs))
         {
-            pendingRequests.Remove(requestId);
+            pendingRequests.Remove(header.requestId);
             tcs.SetResult(packet);
         }
     }
@@ -548,29 +554,23 @@ public class RequestResponseSystem : MonoBehaviour
     // Server-side request handler (would be on the other device)
     void HandleRequest(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        if (data.Length < 2) return;
-        
-        int requestId = (int)data[0];
-        ushort requestType = (ushort)data[1];
+        var header = packet.ReadAs<RpcRequestHeader>();
         
         // Process request based on type
-        string response = ProcessRequest(requestType, data.Skip(2).ToArray());
-        
-        // Send response
-        AetherLink.Instance.SendData(8000, requestId, response);
-    }
-    
-    string ProcessRequest(ushort requestType, object[] requestData)
-    {
-        switch (requestType)
+        switch (header.requestType)
         {
             case 8001: // GetPlayerStats
-                string playerId = (string)requestData[0];
-                return $"Stats for {playerId}: Level 25, Score 1500";
-            
-            default:
-                return "Unknown request type";
+                var req = packet.ReadAs<PlayerStatsRequest>();
+                
+                // Return stats via unmanaged struct
+                var res = new PlayerStatsResponse { 
+                    requestId = req.requestId, 
+                    level = 25, 
+                    score = 1500 
+                };
+                
+                AetherLink.Instance.SendData(8000, res);
+                break;
         }
     }
 }
@@ -583,122 +583,46 @@ public class RequestResponseSystem : MonoBehaviour
 ### Advanced State Sync System
 
 ```csharp
+using Unity.Collections;
+using System.Runtime.InteropServices;
+
 [System.Serializable]
-public class SyncedGameState : IAetherSerializable
+[StructLayout(LayoutKind.Sequential)]
+public struct EnvironmentState
 {
     public float gameTime;
-    public Vector3[] playerPositions;
-    public Dictionary<int, PlayerState> playerStates;
     public int currentLevel;
     public bool isPaused;
-    
-    public SyncedGameState()
-    {
-        playerStates = new Dictionary<int, PlayerState>();
-    }
-    
-    public void Serialize(BinaryWriter writer)
-    {
-        writer.Write(gameTime);
-        writer.Write(currentLevel);
-        writer.Write(isPaused);
-        
-        // Player positions
-        writer.Write(playerPositions?.Length ?? 0);
-        if (playerPositions != null)
-        {
-            foreach (var pos in playerPositions)
-            {
-                writer.Write(pos.x);
-                writer.Write(pos.y);
-                writer.Write(pos.z);
-            }
-        }
-        
-        // Player states
-        writer.Write(playerStates.Count);
-        foreach (var kvp in playerStates)
-        {
-            writer.Write(kvp.Key);
-            kvp.Value.Serialize(writer);
-        }
-    }
-    
-    public void Deserialize(BinaryReader reader)
-    {
-        gameTime = reader.ReadSingle();
-        currentLevel = reader.ReadInt32();
-        isPaused = reader.ReadBoolean();
-        
-        // Player positions
-        int posCount = reader.ReadInt32();
-        playerPositions = new Vector3[posCount];
-        for (int i = 0; i < posCount; i++)
-        {
-            playerPositions[i] = new Vector3(
-                reader.ReadSingle(),
-                reader.ReadSingle(),
-                reader.ReadSingle()
-            );
-        }
-        
-        // Player states
-        playerStates.Clear();
-        int stateCount = reader.ReadInt32();
-        for (int i = 0; i < stateCount; i++)
-        {
-            int playerId = reader.ReadInt32();
-            var state = new PlayerState();
-            state.Deserialize(reader);
-            playerStates[playerId] = state;
-        }
-    }
 }
 
 [System.Serializable]
-public struct PlayerState : IAetherSerializable
+[StructLayout(LayoutKind.Sequential)]
+public struct PlayerState
 {
+    public int playerId;
+    public Vector3 position;
     public float health;
     public int score;
     public bool isActive;
-    public string currentWeapon;
-    
-    public void Serialize(BinaryWriter writer)
-    {
-        writer.Write(health);
-        writer.Write(score);
-        writer.Write(isActive);
-        writer.Write(currentWeapon ?? string.Empty);
-    }
-    
-    public void Deserialize(BinaryReader reader)
-    {
-        health = reader.ReadSingle();
-        score = reader.ReadInt32();
-        isActive = reader.ReadBoolean();
-        currentWeapon = reader.ReadString();
-    }
 }
 
 public class StateSynchronizationManager : MonoBehaviour
 {
     [Header("Sync Settings")]
     [SerializeField] private float syncInterval = 0.1f; // 10 FPS
-    [SerializeField] private bool isDeltaCompression = true;
     
-    private SyncedGameState currentState;
-    private SyncedGameState previousState;
+    private EnvironmentState currentEnvState;
+    private Dictionary<int, PlayerState> currentPlayerStates = new Dictionary<int, PlayerState>();
+    
     private float lastSyncTime;
     
     async void Start()
     {
-        currentState = new SyncedGameState();
-        previousState = new SyncedGameState();
-        
         var token = this.GetCancellationTokenOnDestroy();
         
         // Handle incoming state updates
-        AetherLink.Instance.RegisterDataHandler(9001, OnStateReceived, token);
+        AetherLink.Instance.RegisterDataHandler(9001, OnEnvStateReceived, token);
+        AetherLink.Instance.RegisterDataHandler(9002, OnPlayerStateReceived, token);
         
         // Start sync loop if master
         if (AetherLink.Instance.IsMaster)
@@ -715,17 +639,7 @@ public class StateSynchronizationManager : MonoBehaviour
             
             if (Time.time - lastSyncTime >= syncInterval)
             {
-                UpdateCurrentState();
-                
-                if (isDeltaCompression)
-                {
-                    SendDeltaState();
-                }
-                else
-                {
-                    SendFullState();
-                }
-                
+                UpdateAndSendState();
                 lastSyncTime = Time.time;
             }
             
@@ -733,133 +647,63 @@ public class StateSynchronizationManager : MonoBehaviour
         }
     }
     
-    void UpdateCurrentState()
+    void UpdateAndSendState()
     {
-        // Update state from game objects
-        currentState.gameTime = Time.time;
-        currentState.currentLevel = GameManager.Instance.CurrentLevel;
-        currentState.isPaused = GameManager.Instance.IsPaused;
+        // 1. Send Environment State
+        currentEnvState.gameTime = Time.time;
+        currentEnvState.currentLevel = GameManager.Instance.CurrentLevel;
+        currentEnvState.isPaused = GameManager.Instance.IsPaused;
         
-        // Update player positions
+        AetherLink.Instance.SendData(9001, currentEnvState);
+        
+        // 2. Send Player States individually to maintain zero-allocation
         var players = FindObjectsOfType<PlayerController>();
-        currentState.playerPositions = players.Select(p => p.transform.position).ToArray();
-        
-        // Update player states
-        currentState.playerStates.Clear();
         foreach (var player in players)
         {
-            currentState.playerStates[player.PlayerId] = new PlayerState
+            var pState = new PlayerState
             {
+                playerId = player.PlayerId,
+                position = player.transform.position,
                 health = player.Health,
                 score = player.Score,
-                isActive = player.IsActive,
-                currentWeapon = player.CurrentWeapon
+                isActive = player.IsActive
             };
+            
+            AetherLink.Instance.SendData(9002, pState);
         }
     }
     
-    void SendFullState()
+    void OnEnvStateReceived(PacketResponse packet)
     {
-        AetherLink.Instance.SendData(9001, currentState);
-        previousState = CloneState(currentState);
-    }
-    
-    void SendDeltaState()
-    {
-        // Only send if there are meaningful changes
-        if (HasSignificantChanges())
-        {
-            AetherLink.Instance.SendData(9001, currentState);
-            previousState = CloneState(currentState);
-        }
-    }
-    
-    bool HasSignificantChanges()
-    {
-        // Check for significant changes
-        if (Mathf.Abs(currentState.gameTime - previousState.gameTime) > 0.01f) return true;
-        if (currentState.currentLevel != previousState.currentLevel) return true;
-        if (currentState.isPaused != previousState.isPaused) return true;
-        
-        // Check position changes
-        if (currentState.playerPositions.Length != previousState.playerPositions.Length) return true;
-        
-        for (int i = 0; i < currentState.playerPositions.Length; i++)
-        {
-            if (Vector3.Distance(currentState.playerPositions[i], previousState.playerPositions[i]) > 0.01f)
-                return true;
-        }
-        
-        return false;
-    }
-    
-    void OnStateReceived(PacketResponse packet)
-    {
-        object[] data = packet.ReadObjects();
-        var receivedState = (SyncedGameState)data[0];
-        
-        ApplyState(receivedState);
-    }
-    
-    void ApplyState(SyncedGameState state)
-    {
-        // Apply received state to game objects
+        // Zero-allocation deserialization
+        var state = packet.ReadAs<EnvironmentState>();
         GameManager.Instance.SetGameTime(state.gameTime);
         GameManager.Instance.SetCurrentLevel(state.currentLevel);
         GameManager.Instance.SetPauseState(state.isPaused);
+    }
+    
+    void OnPlayerStateReceived(PacketResponse packet)
+    {
+        // Zero-allocation deserialization
+        var pState = packet.ReadAs<PlayerState>();
+        currentPlayerStates[pState.playerId] = pState;
         
-        // Update player positions with interpolation
-        var players = FindObjectsOfType<PlayerController>();
-        for (int i = 0; i < Mathf.Min(players.Length, state.playerPositions.Length); i++)
+        // Apply state to local player representations...
+        ApplyPlayerState(pState);
+    }
+    
+    void ApplyPlayerState(PlayerState state)
+    {
+        var player = GetPlayerById(state.playerId);
+        if (player != null)
         {
-            StartCoroutine(InterpolatePosition(players[i], state.playerPositions[i]));
-        }
-        
-        // Update player states
-        foreach (var player in players)
-        {
-            if (state.playerStates.TryGetValue(player.PlayerId, out var playerState))
-            {
-                player.SetHealth(playerState.health);
-                player.SetScore(playerState.score);
-                player.SetActive(playerState.isActive);
-                player.SetWeapon(playerState.currentWeapon);
-            }
+            // Update components...
+            player.transform.position = state.position;
+            player.SetHealth(state.health);
         }
     }
     
-    IEnumerator InterpolatePosition(PlayerController player, Vector3 targetPosition)
-    {
-        Vector3 startPosition = player.transform.position;
-        float duration = syncInterval;
-        float elapsed = 0;
-        
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            player.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-            yield return null;
-        }
-        
-        player.transform.position = targetPosition;
-    }
-    
-    SyncedGameState CloneState(SyncedGameState original)
-    {
-        // Deep clone implementation
-        using (var stream = new MemoryStream())
-        using (var writer = new BinaryWriter(stream))
-        using (var reader = new BinaryReader(stream))
-        {
-            original.Serialize(writer);
-            stream.Position = 0;
-            
-            var clone = new SyncedGameState();
-            clone.Deserialize(reader);
-            return clone;
-        }
-    }
+    PlayerController GetPlayerById(int id) { return null; /* Implementation details omitted */ }
 }
 ```
 
@@ -989,62 +833,48 @@ public class ErrorRecoveryManager : MonoBehaviour
             throw new System.ArgumentException("Invalid packet data");
         }
         
-        // Process packet with validation
-        object[] data = packet.ReadObjects();
-        if (data.Length == 0)
+        // Route to appropriate handler and safely parse
+        try 
         {
-            throw new System.InvalidOperationException("No data objects in packet");
+            switch (packet.Header)
+            {
+                case 9001: // EnvironmentState
+                    var envState = packet.ReadAs<EnvironmentState>();
+                    HandleGameData(envState);
+                    break;
+                case 9002: // PlayerState
+                    var pState = packet.ReadAs<PlayerState>();
+                    HandlePlayerData(pState);
+                    break;
+                default:
+                    Debug.LogWarning($"Unknown packet header: {packet.Header}");
+                    break;
+            }
+            
+            // Reset error count on successful processing
+            consecutiveErrors = 0;
         }
-        
-        // Route to appropriate handler
-        switch (packet.Header)
+        catch (System.Exception ex)
         {
-            case 10001:
-                HandleGameData(data);
-                break;
-            case 10002:
-                HandlePlayerData(data);
-                break;
-            default:
-                Debug.LogWarning($"Unknown packet header: {packet.Header}");
-                break;
+            throw new System.ArgumentException($"Data read error: {ex.Message}");
         }
-        
-        // Reset error count on successful processing
-        consecutiveErrors = 0;
     }
     
-    void HandleGameData(object[] data)
+    void HandleGameData(EnvironmentState state)
     {
-        // Validate data structure
-        if (data.Length < 3)
-        {
-            throw new System.ArgumentException("Insufficient game data");
-        }
-        
-        // Process game data with type checking
+        // Process game data safely
         try
         {
-            float gameTime = (float)data[0];
-            int level = (int)data[1];
-            bool isPaused = (bool)data[2];
-            
-            UpdateGameState(gameTime, level, isPaused);
+            UpdateGameState(state.gameTime, state.currentLevel, state.isPaused);
         }
-        catch (System.InvalidCastException ex)
+        catch (System.Exception ex)
         {
-            throw new System.ArgumentException($"Invalid data types in game data: {ex.Message}");
+            throw new System.ArgumentException($"Game data error: {ex.Message}");
         }
     }
     
-    void HandlePlayerData(object[] data)
+    void HandlePlayerData(PlayerState state)
     {
-        // Similar validation and processing for player data
-        if (data.Length < 2)
-        {
-            throw new System.ArgumentException("Insufficient player data");
-        }
-        
         // Process with validation...
     }
     
@@ -1515,19 +1345,19 @@ public class PlayerSyncModule : INetworkModule
         }
     }
     
+    public struct PlayerPositionUpdate { public int playerId; public Vector3 position; }
+
     void HandlePlayerPosition(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        int playerId = (int)data[0];
-        Vector3 position = (Vector3)data[1];
+        var data = packet.ReadAs<PlayerPositionUpdate>();
         
-        if (playerData.TryGetValue(playerId, out var syncData))
+        if (playerData.TryGetValue(data.playerId, out var syncData))
         {
-            syncData.UpdatePosition(position);
+            syncData.UpdatePosition(data.position);
         }
         else
         {
-            playerData[playerId] = new PlayerSyncData { Position = position };
+            playerData[data.playerId] = new PlayerSyncData { Position = data.position };
         }
     }
     
@@ -1726,15 +1556,20 @@ public class MultiplayerSessionManager : MonoBehaviour
         }
     }
     
+    // Define unmanaged structs for communication
+    public struct PlayerJoinRequest { public int requestedPlayerId; }
+    public struct JoinResponseData { public int playerId; public bool success; }
+    public struct PlayerReadyUpdateData { public int playerId; public bool isReady; }
+    public struct PlayerGameAction { public int playerId; public int actionType; public int actionData; }
+
     void OnPlayerJoinRequest(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        string playerName = (string)data[0];
-        int requestedPlayerId = (int)data[1];
+        var req = packet.ReadAs<PlayerJoinRequest>();
+        string playerName = "Player_" + req.requestedPlayerId;
         
         if (activePlayers.Count >= maxPlayers)
         {
-            SendJoinResponse(requestedPlayerId, false, "Session full");
+            SendJoinResponse(req.requestedPlayerId, false, "Session full");
             return;
         }
         
@@ -1742,11 +1577,11 @@ public class MultiplayerSessionManager : MonoBehaviour
         {
             if (enableSpectatorMode)
             {
-                SendJoinResponse(requestedPlayerId, true, "Joined as spectator");
+                SendJoinResponse(req.requestedPlayerId, true, "Joined as spectator");
             }
             else
             {
-                SendJoinResponse(requestedPlayerId, false, "Session in progress");
+                SendJoinResponse(req.requestedPlayerId, false, "Session in progress");
             }
             return;
         }
@@ -1754,32 +1589,30 @@ public class MultiplayerSessionManager : MonoBehaviour
         // Add player to session
         var playerSession = new PlayerSession
         {
-            PlayerId = requestedPlayerId,
+            PlayerId = req.requestedPlayerId,
             PlayerName = playerName,
             JoinTime = Time.time,
             IsReady = false,
             IsSpectator = false
         };
         
-        activePlayers[requestedPlayerId] = playerSession;
-        SendJoinResponse(requestedPlayerId, true, "Welcome to the session!");
+        activePlayers[req.requestedPlayerId] = playerSession;
+        SendJoinResponse(req.requestedPlayerId, true, "Welcome to the session!");
         BroadcastPlayerJoined(playerSession);
         
-        Debug.Log($"Player {playerName} (ID: {requestedPlayerId}) joined the session");
+        Debug.Log($"Player {playerName} (ID: {req.requestedPlayerId}) joined the session");
     }
     
     void OnPlayerReadyUpdate(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        int playerId = (int)data[0];
-        bool isReady = (bool)data[1];
+        var data = packet.ReadAs<PlayerReadyUpdateData>();
         
-        if (activePlayers.TryGetValue(playerId, out var playerSession))
+        if (activePlayers.TryGetValue(data.playerId, out var playerSession))
         {
-            playerSession.IsReady = isReady;
-            BroadcastPlayerReadyUpdate(playerId, isReady);
+            playerSession.IsReady = data.isReady;
+            BroadcastPlayerReadyUpdate(data.playerId, data.isReady);
             
-            Debug.Log($"Player {playerSession.PlayerName} ready status: {isReady}");
+            Debug.Log($"Player {playerSession.PlayerName} ready status: {data.isReady}");
         }
     }
     
@@ -1788,14 +1621,11 @@ public class MultiplayerSessionManager : MonoBehaviour
         if (currentSessionState != SessionState.InProgress)
             return;
         
-        object[] data = packet.ReadObjects();
-        int playerId = (int)data[0];
-        string actionType = (string)data[1];
-        object actionData = data[2];
+        var action = packet.ReadAs<PlayerGameAction>();
         
         // Process and broadcast game action
-        ProcessGameAction(playerId, actionType, actionData);
-        BroadcastGameAction(playerId, actionType, actionData);
+        ProcessGameAction(action.playerId, action.actionType, action.actionData);
+        BroadcastGameAction(action);
     }
     
     async UniTask StartGameSession()
@@ -1815,13 +1645,11 @@ public class MultiplayerSessionManager : MonoBehaviour
     async UniTask EndGameSession(string reason)
     {
         Debug.Log($"Ending game session: {reason}");
-        
         currentSessionState = SessionState.Ended;
         
-        // Calculate final scores, stats, etc.
         var sessionResults = CalculateSessionResults();
         
-        BroadcastGameEnd(reason, sessionResults);
+        BroadcastGameEnd(sessionResults);
         BroadcastSessionStateChange();
     }
     
@@ -1830,39 +1658,28 @@ public class MultiplayerSessionManager : MonoBehaviour
         Debug.Log($"Pausing session: {reason}");
         
         currentSessionState = SessionState.Paused;
-        BroadcastSessionPaused(reason);
         BroadcastSessionStateChange();
     }
     
     void SendJoinResponse(int playerId, bool success, string message)
     {
-        AetherLink.Instance.SendData(30101, playerId, success, message);
+        AetherLink.Instance.SendData(30101, new JoinResponseData { playerId = playerId, success = success });
     }
     
     void BroadcastLobbyState()
     {
-        var lobbyData = activePlayers.Values.Select(p => new
-        {
-            p.PlayerId,
-            p.PlayerName,
-            p.IsReady,
-            p.IsSpectator
-        }).ToArray();
-        
-        AetherLink.Instance.SendData(30201, currentSessionState, lobbyData);
+        AetherLink.Instance.SendData(30201, currentSessionState);
     }
     
     void BroadcastGameState()
     {
         float elapsedTime = Time.time - sessionStartTime;
-        float remainingTime = sessionTimeout - elapsedTime;
-        
-        AetherLink.Instance.SendData(30202, elapsedTime, remainingTime, activePlayers.Count);
+        AetherLink.Instance.SendData(30202, elapsedTime);
     }
     
     void BroadcastPlayerJoined(PlayerSession player)
     {
-        AetherLink.Instance.SendData(30203, player.PlayerId, player.PlayerName);
+        AetherLink.Instance.SendData(30203, player.PlayerId);
     }
     
     void BroadcastPlayerDisconnected(int playerId)
@@ -1872,7 +1689,7 @@ public class MultiplayerSessionManager : MonoBehaviour
     
     void BroadcastPlayerReadyUpdate(int playerId, bool isReady)
     {
-        AetherLink.Instance.SendData(30205, playerId, isReady);
+        AetherLink.Instance.SendData(30205, new PlayerReadyUpdateData { playerId = playerId, isReady = isReady });
     }
     
     void BroadcastSessionStateChange()
@@ -1885,22 +1702,17 @@ public class MultiplayerSessionManager : MonoBehaviour
         AetherLink.Instance.SendData(30207, sessionStartTime);
     }
     
-    void BroadcastGameEnd(string reason, SessionResults results)
+    void BroadcastGameEnd(SessionResults results)
     {
-        AetherLink.Instance.SendData(30208, reason, results);
+        AetherLink.Instance.SendData(30208, results);
     }
     
-    void BroadcastSessionPaused(string reason)
+    void BroadcastGameAction(PlayerGameAction action)
     {
-        AetherLink.Instance.SendData(30209, reason);
+        AetherLink.Instance.SendData(30210, action);
     }
     
-    void BroadcastGameAction(int playerId, string actionType, object actionData)
-    {
-        AetherLink.Instance.SendData(30210, playerId, actionType, actionData);
-    }
-    
-    void ProcessGameAction(int playerId, string actionType, object actionData)
+    void ProcessGameAction(int playerId, int actionType, int actionData)
     {
         // Process game action logic
         Debug.Log($"Processing action {actionType} from player {playerId}");
@@ -1917,8 +1729,7 @@ public class MultiplayerSessionManager : MonoBehaviour
         return new SessionResults
         {
             Duration = Time.time - sessionStartTime,
-            PlayerCount = activePlayers.Count,
-            // Add other session statistics
+            PlayerCount = activePlayers.Count
         };
     }
     
@@ -1944,47 +1755,14 @@ public class PlayerSession
     public bool IsReady;
     public bool IsSpectator;
     public int Score;
-    public Dictionary<string, object> CustomData = new Dictionary<string, object>();
 }
 
 [System.Serializable]
-public struct SessionResults : IAetherSerializable
+[StructLayout(LayoutKind.Sequential)]
+public struct SessionResults
 {
     public float Duration;
     public int PlayerCount;
-    public Dictionary<int, int> PlayerScores;
-    
-    public void Serialize(BinaryWriter writer)
-    {
-        writer.Write(Duration);
-        writer.Write(PlayerCount);
-        
-        writer.Write(PlayerScores?.Count ?? 0);
-        if (PlayerScores != null)
-        {
-            foreach (var kvp in PlayerScores)
-            {
-                writer.Write(kvp.Key);
-                writer.Write(kvp.Value);
-            }
-        }
-    }
-    
-    public void Deserialize(BinaryReader reader)
-    {
-        Duration = reader.ReadSingle();
-        PlayerCount = reader.ReadInt32();
-        
-        int scoreCount = reader.ReadInt32();
-        PlayerScores = new Dictionary<int, int>(scoreCount);
-        
-        for (int i = 0; i < scoreCount; i++)
-        {
-            int playerId = reader.ReadInt32();
-            int score = reader.ReadInt32();
-            PlayerScores[playerId] = score;
-        }
-    }
 }
 ```
 

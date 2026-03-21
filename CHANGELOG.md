@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-discovery system for peer detection on local networks
 - Robust connection management with automatic reconnection
 - Header-based packet system for structured data transmission
-- Built-in object serialization for Unity and .NET types
+- Zero-allocation unmanaged struct serialization (replaced legacy object array serialization)
 - Network statistics monitoring and performance tracking
 - Heartbeat system for connection reliability
 - Same-machine fallback for local development
@@ -79,5 +79,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Complete inline API documentation
 - Quick start guides and usage examples
 - Best practices and performance recommendations
+- Full UPM-compliant documentation structure (TableOfContents.md)
 
 ---

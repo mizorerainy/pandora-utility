@@ -154,15 +154,15 @@ public class DataTransmitter : MonoBehaviour
         SendGameState();
     }
     
+    public struct PlayerInfo { public int playerId; public int playerLevel; }
+    public struct GameStateData { public Vector3 position; public float health; public bool isAlive; }
+
     void SendPlayerInfo()
     {
         if (AetherLink.Instance.IsConnected)
         {
-            string playerName = "Player1";
-            int playerLevel = 5;
-            
             // Header 1001 = Player Info
-            AetherLink.Instance.SendData(1001, playerName, playerLevel);
+            AetherLink.Instance.SendData(1001, new PlayerInfo { playerId = 1, playerLevel = 5 });
         }
     }
     
@@ -170,12 +170,14 @@ public class DataTransmitter : MonoBehaviour
     {
         if (AetherLink.Instance.IsConnected)
         {
-            Vector3 position = transform.position;
-            float health = 100f;
-            bool isAlive = true;
-            
             // Header 1002 = Game State
-            AetherLink.Instance.SendData(1002, position, health, isAlive);
+            var state = new GameStateData 
+            { 
+                position = transform.position, 
+                health = 100f, 
+                isAlive = true 
+            };
+            AetherLink.Instance.SendData(1002, state);
         }
     }
 }
@@ -211,23 +213,14 @@ public class DataReceiver : MonoBehaviour
     
     void HandlePlayerInfo(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        
-        string playerName = (string)data[0];
-        int playerLevel = (int)data[1];
-        
-        Debug.Log($"Received player info: {playerName}, Level {playerLevel}");
+        var info = packet.ReadAs<PlayerInfo>();
+        Debug.Log($"Received player info for ID: {info.playerId}, Level {info.playerLevel}");
     }
     
     void HandleGameState(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        
-        Vector3 position = (Vector3)data[0];
-        float health = (float)data[1];
-        bool isAlive = (bool)data[2];
-        
-        Debug.Log($"Game state: Pos={position}, Health={health}, Alive={isAlive}");
+        var state = packet.ReadAs<GameStateData>();
+        Debug.Log($"Game state: Pos={state.position}, Health={state.health}, Alive={state.isAlive}");
     }
 }
 ```
@@ -376,10 +369,12 @@ public class PeriodicNetworkUpdate : MonoBehaviour
         }
     }
     
+    public struct PeriodicUpdate { public Vector3 position; public Quaternion rotation; }
+
     void SendPeriodicUpdate()
     {
         // Send regular updates like position, animation state, etc.
-        AetherLink.Instance.SendData(2001, transform.position, transform.rotation);
+        AetherLink.Instance.SendData(2001, new PeriodicUpdate { position = transform.position, rotation = transform.rotation });
     }
 }
 ```
@@ -396,23 +391,26 @@ public class RequestResponseExample : MonoBehaviour
         }
     }
 
+    public struct DataRequest { public int requestCode; }
+    public struct PlayerDataResponse { public int playerId; public float health; public float energy; }
+
     void RequestSlaveData()
     {
         // Header 3001 = Data Request
-        AetherLink.Instance.SendData(3001, "REQUEST_PLAYER_DATA");
+        AetherLink.Instance.SendData(3001, new DataRequest { requestCode = 1 });
     }
     
     void HandleDataRequest(PacketResponse packet)
     {
         if (packet.Header == 3001)
         {
-            string request = (string)packet.ReadObjects()[0];
+            var request = packet.ReadAs<DataRequest>();
             
-            if (request == "REQUEST_PLAYER_DATA")
+            if (request.requestCode == 1)
             {
                 // Respond with requested data
                 // Header 3002 = Data Response
-                AetherLink.Instance.SendData(3002, "PlayerName", 100, 75.5f);
+                AetherLink.Instance.SendData(3002, new PlayerDataResponse { playerId = 100, health = 100f, energy = 75.5f });
             }
         }
     }
@@ -422,7 +420,7 @@ public class RequestResponseExample : MonoBehaviour
 ```csharp
 public class NetworkErrorHandler : MonoBehaviour
 {
-    void SendDataSafely(ushort header, params object[] data)
+    void SendDataSafely<T>(ushort header, T data) where T : unmanaged
     {
         try
         {
@@ -449,7 +447,7 @@ public class NetworkErrorHandler : MonoBehaviour
 After completing this basic tutorial, you're ready to explore:
 
 1. **[AetherLink Setup Tutorial](aetherlink-setup.md)** - Advanced configuration options
-2. **[Data Serialization Examples](../examples/data-serialization.md)** - Working with custom data types
+2. **[Examples Scenarios](../examples/advanced-scenarios.md)** - Working with extensive custom data streams
 3. **[Advanced Scenarios](../examples/advanced-scenarios.md)** - Complex networking patterns
 
 ## Troubleshooting

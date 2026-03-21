@@ -262,12 +262,12 @@ Create two simple scripts to test basic connectivity:
 ### Learning Path
 
 1. **Immediate Next Steps**
-   - [Simple Connection Tutorial](tutorials/simple-connection.md) - Detailed connection setup
-   - [Data Serialization Tutorial](tutorials/data-serialization.md) - Send custom data
+   - [AetherLink Setup Tutorial](tutorials/aetherlink-setup.md) - Detailed connection setup
+   - [Basic Networking Tutorial](tutorials/basic-networking.md) - Send custom data
 
 2. **Intermediate Development**
-   - [Advanced Scenarios](tutorials/advanced-scenarios.md) - Complex networking patterns
-   - [API Reference](api/) - Complete technical documentation
+   - [Advanced Scenarios](examples/advanced-scenarios.md) - Complex networking patterns
+   - [API Reference](api-reference.md) - Complete technical documentation
 
 3. **Production Readiness**
    - Error handling and recovery patterns
@@ -283,7 +283,7 @@ Create two simple scripts to test basic connectivity:
 
 2. **Data Serialization Sample**
    - Built-in type serialization
-   - Custom type implementation
+   - Unmanaged struct serialization
    - Complex data structures
 
 3. **Advanced Features Sample**
@@ -293,7 +293,7 @@ Create two simple scripts to test basic connectivity:
 
 ### Key Documentation
 
-- **[API Reference](api/)** - Complete class and method documentation
+- **[API Reference](api-reference.md)** - Complete class and method documentation
 - **[Tutorials](tutorials/)** - Step-by-step learning guides
 - **[Troubleshooting](tutorials/troubleshooting.md)** - Common issues and solutions
 
@@ -351,7 +351,7 @@ If you encounter issues during setup:
 1. **Documentation Resources**
    - [Troubleshooting Guide](tutorials/troubleshooting.md)
    - [FAQ Section](tutorials/troubleshooting.md#frequently-asked-questions)
-   - [API Documentation](api/)
+   - [API Documentation](api-reference.md)
 
 2. **Community Support**
    - [GitHub Issues](https://github.com/mizorerainy/pandora-unity-package/issues)
@@ -376,7 +376,7 @@ You're now ready to build networked Unity applications with Pandora! Here are yo
 3. **Study Sample Projects** - See real implementations in action
 4. **Build Your First Project** - Apply what you've learned to your own ideas
 
-Ready to dive deeper? Continue with the [Simple Connection Tutorial](tutorials/simple-connection.md) to build your first complete networked application.
+Ready to dive deeper? Continue with the [AetherLink Setup Tutorial](tutorials/aetherlink-setup.md) to build your first complete networked application.
 
 ---
 

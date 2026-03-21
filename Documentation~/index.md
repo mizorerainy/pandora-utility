@@ -17,9 +17,9 @@ Welcome to the comprehensive documentation for the Pandora Unity Utility Package
 
 New to Pandora? Start here:
 
-1. **[Installation Guide](installation.md)** - Install via Package Manager or Git URL
-2. **[Simple Connection Tutorial](tutorials/simple-connection.md)** - Your first network connection
-3. **[Data Serialization Tutorial](tutorials/data-serialization.md)** - Send and receive data
+1. **[Getting Started](getting-started.md)** - Install via Package Manager or Git URL
+2. **[AetherLink Setup](tutorials/aetherlink-setup.md)** - Setting up the network components
+3. **[Basic Networking Tutorial](tutorials/basic-networking.md)** - Send and receive unmanaged data structs
 
 ---
 
@@ -51,19 +51,17 @@ Development utilities to enhance your Unity workflow and productivity.
 ## Documentation Sections
 
 ### Getting Started
-- **[Installation](installation.md)** - Package installation and setup
-- **[System Requirements](installation.md#system-requirements)** - Unity versions and platform compatibility
-- **[First Steps](installation.md#first-steps)** - Basic configuration
+- **[Getting Started](getting-started.md)** - Package installation and setup
+- **[System Requirements](getting-started.md#system-requirements)** - Unity versions and platform compatibility
+- **[First Steps](getting-started.md#first-steps)** - Basic configuration
 
 ### Tutorials
-- **[Simple Connection](tutorials/simple-connection.md)** - Basic master-slave connection setup
-- **[Data Serialization](tutorials/data-serialization.md)** - Built-in types and custom serialization
-- **[Advanced Scenarios](tutorials/advanced-scenarios.md)** - Async streams, managed handlers, complex patterns
+- **[AetherLink Setup](tutorials/aetherlink-setup.md)** - Basic master-slave manager setup
+- **[Basic Networking](tutorials/basic-networking.md)** - Unmanaged struct serialization and zero-allocation
+- **[Advanced Scenarios](examples/advanced-scenarios.md)** - Async streams, managed handlers, complex patterns
 
 ### API Documentation
-- **[AetherLink API](api/aetherlink-api.md)** - Core networking class reference
-- **[Settings API](api/settings-api.md)** - Configuration and settings
-- **[Serialization API](api/serialization-api.md)** - Data handling interfaces
+- **[AetherLink API](api-reference.md)** - Core networking class reference and configuration
 
 ---
 
@@ -78,27 +76,26 @@ Development utilities to enhance your Unity workflow and productivity.
 - **AetherLink** - Primary networking interface and singleton
 - **Settings** - Network configuration and connection parameters
 - **PacketResponse** - Network packet handling
-- **IAetherSerializable** - Custom data serialization interface
 
-**[Complete API Reference](api/)**
+**[Complete API Reference](api-reference.md)**
 
 ---
 
 ## Examples & Tutorials
 
 ### Beginner Level
-- [Simple Connection Setup](examples/simple-connection.md) - Master/slave connection basics
-- [Basic Data Exchange](examples/data-serialization.md) - Sending built-in types
+- [AetherLink Setup](tutorials/aetherlink-setup.md) - Setting up the Network Manager
+- [Basic Networking](tutorials/basic-networking.md) - Connecting and exchanging unmanaged structs
 
 ### Intermediate Level
-- [Custom Data Types](examples/data-serialization.md#custom-type-serialization) - Implementing IAetherSerializable
-- [Event Handling](examples/simple-connection.md#handling-events) - Connection and data events
+- [Custom Data Types](tutorials/basic-networking.md#custom-type-serialization) - Unmanaged Struct Serialization
+- [Troubleshooting](tutorials/troubleshooting.md) - Connection and data analysis
 
 ### Advanced Level
-- [Async Stream API](tutorials/advanced-scenarios.md#async-stream-api) - Reactive event handling with UniTask
-- [Managed Handlers](tutorials/advanced-scenarios.md#managed-event-handlers) - Automatic cleanup and error handling
-- [Performance Optimization](tutorials/advanced-scenarios.md#performance-optimization) - High-throughput scenarios
-- [Error Recovery](tutorials/advanced-scenarios.md#error-recovery-and-resilience) - Building robust applications
+- [Async Stream API](examples/advanced-scenarios.md#async-stream-api) - Reactive event handling with UniTask
+- [Managed Handlers](examples/advanced-scenarios.md#managed-event-handlers) - Automatic cleanup and error handling
+- [Performance Optimization](examples/advanced-scenarios.md#performance-optimization) - High-throughput scenarios
+- [Error Recovery](examples/advanced-scenarios.md#error-recovery-and-resilience) - Building robust applications
 
 ---
 
@@ -125,7 +122,7 @@ Import samples via Package Manager: **Window > Package Manager > Pandora Utility
 ### Architecture Overview
 - **Master/Slave Connection Model** - Simple 1-to-1 LAN networking
 - **Event-Driven Design** - UnityEvent and async stream patterns
-- **Modular Serialization** - Built-in types + custom interface
+- **Zero-Allocation Serialization** - Efficient unmanaged struct support
 - **Unity Integration** - Inspector support and lifecycle management
 
 ---
@@ -200,11 +197,11 @@ Import samples via Package Manager: **Window > Package Manager > Pandora Utility
 
 ## What's Next?
 
-1. **New to networking?** Start with the [Installation Guide](installation.md)
-2. **Ready to connect?** Try the [Simple Connection Tutorial](tutorials/simple-connection.md)
-3. **Need custom data?** Learn [Data Serialization](tutorials/data-serialization.md)
-4. **Building something complex?** Explore [Advanced Scenarios](tutorials/advanced-scenarios.md)
-5. **Want examples?** Check out the [Sample Projects](#sample-projects)
+1. **New to networking?** Start with the [Getting Started Guide](getting-started.md)
+2. **Ready to connect?** Try the [AetherLink Setup Tutorial](tutorials/aetherlink-setup.md)
+3. **Need custom data?** Learn [Basic Networking](tutorials/basic-networking.md)
+4. **Building something complex?** Explore [Advanced Scenarios](examples/advanced-scenarios.md)
+5. **Issues?** Check out the [Troubleshooting](tutorials/troubleshooting.md)
 
 ---
 

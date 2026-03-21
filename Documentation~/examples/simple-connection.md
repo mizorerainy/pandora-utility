@@ -94,6 +94,19 @@ public class SimpleConnectionMaster : MonoBehaviour
         Debug.Log($"Slave connected from: {remoteEndpoint}");
     }
     
+    // Define our network data structures
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct JoinRequest
+    {
+        public int PlayerId;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct ServerStatus
+    {
+        public bool IsReady;
+    }
+
     void OnDataReceived(PacketResponse packet)
     {
         Debug.Log($"Master received data with header: {packet.Header}");
@@ -102,7 +115,7 @@ public class SimpleConnectionMaster : MonoBehaviour
         switch (packet.Header)
         {
             case 1001:
-                HandleGreetingMessage(packet);
+                HandleJoinRequest(packet);
                 break;
             default:
                 Debug.Log($"Unknown packet header: {packet.Header}");
@@ -110,14 +123,14 @@ public class SimpleConnectionMaster : MonoBehaviour
         }
     }
     
-    void HandleGreetingMessage(PacketResponse packet)
+    void HandleJoinRequest(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        string message = (string)data[0];
-        Debug.Log($"Greeting from Slave: {message}");
+        var request = packet.ReadAs<JoinRequest>();
+        Debug.Log($"Join request from Player ID over LAN: {request.PlayerId}");
         
         // Send response back to Slave
-        AetherLink.Instance.SendData(1002, "Hello from Master!");
+        var status = new ServerStatus { IsReady = true };
+        AetherLink.Instance.SendData(1002, status);
     }
     
     void OnDeviceDisconnected()
@@ -192,29 +205,42 @@ public class SimpleConnectionSlave : MonoBehaviour
         Debug.Log("Slave device started - searching for Master...");
     }
     
+    // Define our network data structures
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct JoinRequest
+    {
+        public int PlayerId;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct ServerStatus
+    {
+        public bool IsReady;
+    }
+
     void OnConnectedToMaster(IPEndPoint masterEndpoint)
     {
         Debug.Log($"Connected to Master at: {masterEndpoint}");
         
-        // Send greeting message after a short delay
-        StartCoroutine(SendGreetingAfterDelay());
+        // Send join request after a short delay
+        StartCoroutine(SendJoinRequestAfterDelay());
     }
     
-    IEnumerator SendGreetingAfterDelay()
+    IEnumerator SendJoinRequestAfterDelay()
     {
         yield return new WaitForSeconds(greetingDelay);
         
         if (AetherLink.Instance.IsConnected)
         {
-            SendGreetingMessage();
+            SendJoinRequest();
         }
     }
     
-    void SendGreetingMessage()
+    void SendJoinRequest()
     {
-        string greeting = "Hello from Slave device!";
-        AetherLink.Instance.SendData(1001, greeting);
-        Debug.Log("Sent greeting to Master");
+        var joinRequest = new JoinRequest { PlayerId = Random.Range(1000, 9999) };
+        AetherLink.Instance.SendData(1001, joinRequest);
+        Debug.Log("Sent join request to Master");
     }
     
     void OnDataReceived(PacketResponse packet)
@@ -235,9 +261,8 @@ public class SimpleConnectionSlave : MonoBehaviour
     
     void HandleMasterResponse(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        string response = (string)data[0];
-        Debug.Log($"Response from Master: {response}");
+        var status = packet.ReadAs<ServerStatus>();
+        Debug.Log($"Server Ready Status: {status.IsReady}");
     }
     
     void OnDisconnectedFromMaster()
@@ -297,15 +322,15 @@ When successful, you should see:
 
 Master device started - waiting for Slave connection...
 Slave connected from: 192.168.1.100:54321
-Greeting from Slave: Hello from Slave device!
+Join request from Player ID over LAN: 4572
 ```
 **Slave Console:**
 ```
 
 Slave device started - searching for Master...
 Connected to Master at: 192.168.1.101:7777
-Sent greeting to Master
-Response from Master: Hello from Master!
+Sent join request to Master
+Server Ready Status: True
 ```
 ---
 
@@ -320,6 +345,14 @@ Add this method to your `SimpleConnectionMaster` script:
 [Header("Data Sending")]
 [SerializeField] private KeyCode sendDataKey = KeyCode.Space;
 
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+public struct GameData
+{
+    public float Time;
+    public Vector3 Position;
+    public int Score;
+}
+
 void Update()
 {
     if (Input.GetKeyDown(sendDataKey) && AetherLink.Instance.IsConnected)
@@ -330,18 +363,20 @@ void Update()
 
 void SendSampleData()
 {
-    // Send multiple types of data in one packet
-    float currentTime = Time.time;
-    
-    Vector3 randomPosition = new Vector3(
-        Random.Range(-10f, 10f),
-        Random.Range(0f, 5f),
-        Random.Range(-10f, 10f)
-    );
-    int randomScore = Random.Range(0, 1000);
+    // Build our Unmanaged Struct
+    var matchData = new GameData
+    {
+        Time = Time.time,
+        Position = new Vector3(
+            Random.Range(-10f, 10f),
+            Random.Range(0f, 5f),
+            Random.Range(-10f, 10f)
+        ),
+        Score = Random.Range(0, 1000)
+    };
 
-    AetherLink.Instance.SendData(2001, currentTime, randomPosition, randomScore);
-    Debug.Log($"Master sent: Time={currentTime}, Pos={randomPosition}, Score={randomScore}");
+    AetherLink.Instance.SendData(2001, matchData);
+    Debug.Log($"Master sent: Time={matchData.Time}, Pos={matchData.Position}, Score={matchData.Score}");
 }
 ```
 ### Enhanced Slave Script
@@ -368,13 +403,9 @@ void OnDataReceived(PacketResponse packet)
 
 void HandleSampleData(PacketResponse packet)
 {
-    object[] data = packet.ReadObjects();
+    var data = packet.ReadAs<SimpleConnectionMaster.GameData>();
 
-    float time = (float)data[0];
-    Vector3 position = (Vector3)data[1];
-    int score = (int)data[2];
-    
-    Debug.Log($"Sample data - Time: {time}, Position: {position}, Score: {score}");
+    Debug.Log($"Sample data - Time: {data.Time}, Position: {data.Position}, Score: {data.Score}");
 }
 ```
 ---
@@ -383,38 +414,27 @@ void HandleSampleData(PacketResponse packet)
 
 ### Data Types Supported
 
-AetherLink automatically handles serialization for these types:
+AetherLink automatically handles zero-allocation serialization for any `unmanaged` struct.
 
-- **Primitives**: bool, byte, int, float, double, string
-- **Unity Types**: Vector2, Vector3, Quaternion
-- **Custom Types**: Any class/struct implementing `IAetherSerializable`
+- **Primitives**: bool, byte, int, float, double (use primitives directly inside a struct)
+- **Unity Types**: Vector2, Vector3, Quaternion (all unmanaged in Unity)
+- **Custom Types**: Any struct with `[StructLayout(LayoutKind.Sequential)]`
 
 ### Reading Data Example
 ```csharp
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+public struct ComplexData
+{
+    public Vector3 position;
+    public float health;
+}
+
 void HandleComplexData(PacketResponse packet)
 {
-    object[] data = packet.ReadObjects();
-
-    // Always check data length before accessing
-    if (data.Length < 3)
-    {
-        Debug.LogWarning("Received packet with insufficient data");
-        return;
-    }
+    // Cast to expected type effortlessly without allocating memory
+    var data = packet.ReadAs<ComplexData>();
     
-    // Cast to expected types
-    try
-    {
-        string playerName = (string)data[0];
-        Vector3 playerPosition = (Vector3)data[1];
-        float playerHealth = (float)data[2];
-        
-        Debug.Log($"Player: {playerName} at {playerPosition} with {playerHealth} health");
-    }
-    catch (System.InvalidCastException ex)
-    {
-        Debug.LogError($"Data type mismatch: {ex.Message}");
-    }
+    Debug.Log($"Player at {data.position} with {data.health} health");
 }
 ```
 ---
@@ -445,17 +465,16 @@ void HandleComplexData(PacketResponse packet)
 3. Ensure connection is active before sending data
 4. Add debug logs to confirm SendData is being called
 
-### Type Casting Errors
+### Struct Size Errors
 
 **Symptoms:**
-- InvalidCastException when reading packet data
-- Data appears corrupted
+- `ReadAs<T>` returning wrong or garbled numbers
+- Marshal exception when parsing the struct
 
 **Solutions:**
-1. Always send and receive data in the same order
-2. Use consistent types on both ends
-3. Add try-catch blocks around data reading
-4. Verify data length before accessing array elements
+1. Always add `[StructLayout(LayoutKind.Sequential)]` to your structs.
+2. Match the exact same struct definition on both Master and Slave devices.
+3. Don't use reference classes (like `string` or `List`). Always stick to blittable types like arrays created with `fixed` bounds, or custom string representations like `FixedString32Bytes`.
 
 ---
 
@@ -518,21 +537,28 @@ public class TestConnection : MonoBehaviour
         Debug.Log($"Started as {(isMaster ? "Master" : "Slave")}");
     }
     
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct SimpleMessage
+    {
+        public int Id;
+        public bool Flag;
+    }
+
     void OnConnected(IPEndPoint endpoint)
     {
         Debug.Log($"Connected to {endpoint}");
         
         // Send test message
-        string message = isMaster ? "Hello from Master" : "Hello from Slave";
-        AetherLink.Instance.SendData(1000, message);
+        var msg = new SimpleMessage { Id = isMaster ? 1 : 2, Flag = true };
+        AetherLink.Instance.SendData(1000, msg);
     }
     
     void OnDataReceived(PacketResponse packet)
     {
         if (packet.Header == 1000)
         {
-            object[] data = packet.ReadObjects();
-            Debug.Log($"Received: {data[0]}");
+            var data = packet.ReadAs<SimpleMessage>();
+            Debug.Log($"Received ID: {data.Id}, Flag: {data.Flag}");
         }
     }
     

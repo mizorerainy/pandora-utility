@@ -330,18 +330,17 @@ public class CustomSerializationSetup : MonoBehaviour
     void RegisterCustomTypes()
     {
         // Register custom data structures with unique type IDs
-        AetherLink.Instance.RegisterSerializableType<PlayerData>(1001);
-        AetherLink.Instance.RegisterSerializableType<GameState>(1002);
-        AetherLink.Instance.RegisterSerializableType<InputCommand>(1003);
-        
-        Debug.Log("Custom serialization types registered");
+        // Note: AetherLink's zero-allocation design now works natively with unmanaged structs.
+        // You do not need to register primitive wrapper structures manually:
+        // AetherLink.Instance.SendData(1001, new PlayerData { ... });
+        Debug.Log("Custom serialization types are handled natively.");
     }
 }
 
 [System.Serializable]
-public struct PlayerData
+public struct PlayerData // Must be unmanaged (no objects/strings/arrays)
 {
-    public string playerName;
+    public int playerId;
     public Vector3 position;
     public Quaternion rotation;
     public float health;
@@ -354,7 +353,7 @@ public struct GameState
     public float gameTime;
     public int currentLevel;
     public bool isPaused;
-    public Vector3[] checkpoints;
+    public int checkpointFlags; // Using flags instead of arrays
 }
 
 [System.Serializable]
@@ -362,7 +361,7 @@ public struct InputCommand
 {
     public int commandType;
     public Vector2 inputVector;
-    public bool[] buttonStates;
+    public int buttonFlags; // Using bitmasks instead of boolean arrays
     public float timestamp;
 }
 ```
@@ -395,17 +394,15 @@ public class AdvancedDataHandler : MonoBehaviour
     
     void HandlePlayerData(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        PlayerData playerData = (PlayerData)data[0];
+        PlayerData playerData = packet.ReadAs<PlayerData>();
         
-        Debug.Log($"Player: {playerData.playerName} at {playerData.position}");
+        Debug.Log($"Player: {playerData.playerId} at {playerData.position}");
         // Update local player representation
     }
     
     void HandleGameState(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        GameState gameState = (GameState)data[0];
+        GameState gameState = packet.ReadAs<GameState>();
         
         Debug.Log($"Game Time: {gameState.gameTime}, Level: {gameState.currentLevel}");
         // Update game state
@@ -413,8 +410,7 @@ public class AdvancedDataHandler : MonoBehaviour
     
     void HandleInputCommand(PacketResponse packet)
     {
-        object[] data = packet.ReadObjects();
-        InputCommand input = (InputCommand)data[0];
+        InputCommand input = packet.ReadAs<InputCommand>();
         
         // Process remote input
         ProcessRemoteInput(input);

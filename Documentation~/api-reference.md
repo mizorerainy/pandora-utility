@@ -112,34 +112,18 @@ Stops the network link and closes all connections.
 
 #### SendData
 ```csharp
-public void SendData(ushort header, params object[] data)
+public void SendData<T>(ushort header, T data) where T : unmanaged
 ```
-Sends data over the network connection.
+Sends a zero-allocation unmanaged struct over the network connection.
 
 **Parameters:**
 - `header`: Unique identifier for the message type
-- `data`: Variable number of objects to serialize and send
+- `data`: Unmanaged struct containing the data to send
 
 **Example:**
 ```csharp
-// Send player position
-AetherLink.Instance.SendData(1001, transform.position, playerName);
-```
-### Type Registration
-
-#### RegisterSerializableType
-```csharp
-public void RegisterSerializableType<T>(ushort typeId, bool override = false)
-```
-Registers a custom type for network serialization.
-
-**Parameters:**
-- `typeId`: Unique identifier for the type
-- `override`: Whether to override existing registration
-
-**Example:**
-```csharp
-AetherLink.Instance.RegisterSerializableType<PlayerData>(2001);
+// Send player data
+AetherLink.Instance.SendData(1001, new PlayerData { health = 100 });
 ```
 ### Utility Methods
 
@@ -197,18 +181,26 @@ public class PacketResponse
     public ushort Header { get; }
     public byte[] Data { get; }
     public IPEndPoint RemoteEndPoint { get; }
+    public string Sender { get; }
+    public string Receiver { get; }
+    public float Timestamp { get; }
+    public ushort Checksum { get; }
     
-    public PacketResponse(ushort header, byte[] data, IPEndPoint remoteEndPoint)
-    public object[] ReadObjects()
+    public PacketResponse(...)
+    public T ReadAs<T>() where T : unmanaged
 }
 ```
 **Properties:**
 - `Header`: Message type identifier
 - `Data`: Raw packet data
 - `RemoteEndPoint`: Source of the packet
+- `Sender`: IP address of the sender
+- `Receiver`: IP address of the receiver
+- `Timestamp`: Time the packet was processed
+- `Checksum`: Fletcher-16 packet checksum
 
 **Methods:**
-- `ReadObjects()`: Deserializes the packet data into objects
+- `ReadAs<T>()`: Zero-allocation struct deserialization
 
 **Example:**
 ```csharp
@@ -216,9 +208,7 @@ public void OnPacketReceived(PacketResponse packet)
 {
     if (packet.Header == 1001)
     {
-        object[] data = packet.ReadObjects();
-        Vector3 position = (Vector3)data[0];
-        string playerName = (string)data[1];
+        var data = packet.ReadAs<PlayerData>();
     }
 }
 ```
@@ -298,23 +288,18 @@ public class NetworkManager : MonoBehaviour
 ### Custom Data Types
 
 ```csharp
-[System.Serializable]
-public class PlayerData
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+public struct PlayerData
 {
-    public string name;
     public Vector3 position;
     public int health;
 }
 
 void Start()
 {
-    // Register custom type
-    AetherLink.Instance.RegisterSerializableType<PlayerData>(2000);
-    
-    // Send custom data
+    // Send custom data using unmanaged structs
     var playerData = new PlayerData
     {
-        name = "Player1",
         position = transform.position,
         health = 100
     };
@@ -344,7 +329,7 @@ void HandlePacket(PacketResponse packet)
             break;
         case 2000:
             // Handle player data
-            object[] data = packet.ReadObjects();
+            var data = packet.ReadAs<PlayerData>();
             break;
     }
 }
@@ -386,12 +371,10 @@ void UpdateNetworkStats()
 ### Initialization
 - Always call `Initialize()` before `StartLink()`
 - Use `Settings.Default` as a starting point for configuration
-- Register custom types before starting the link
 
 ### Data Transmission
 - Use meaningful header IDs for different message types
-- Keep data packets small for better performance
-- Register custom types with unique type IDs
+- Keep data packets small for better performance (Max: 1MB)
 
 ### Error Handling
 - Check `IsRunning` before performing network operations
@@ -422,7 +405,6 @@ AetherLink is designed to be used from the Unity main thread. Network operations
 **SendData throws exceptions**
 - Verify `Initialize()` was called successfully
 - Check that `StartLink()` was called and `IsRunning` returns true
-- Ensure all data types are registered if using custom types
 
 **Connection fails**
 - Verify network settings in the Settings object

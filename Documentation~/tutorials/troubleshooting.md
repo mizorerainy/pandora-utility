@@ -270,13 +270,15 @@ public class DataTransmissionDiagnostics : MonoBehaviour
         }
     }
     
+    public struct TestMessage { public float time; }
+
     void SendTestData()
     {
         try
         {
-            string testMessage = $"Test message {Time.time}";
-            AetherLink.Instance.SendData(9999, testMessage);
-            Debug.Log($"Sent test data: {testMessage}");
+            var msg = new TestMessage { time = Time.time };
+            AetherLink.Instance.SendData(9999, msg);
+            Debug.Log($"Sent test data: {msg.time}");
         }
         catch (System.Exception ex)
         {
@@ -288,9 +290,8 @@ public class DataTransmissionDiagnostics : MonoBehaviour
     {
         if (packet.Header == 9999)
         {
-            object[] data = packet.ReadObjects();
-            string message = (string)data[0];
-            Debug.Log($"Received test data: {message}");
+            var msg = packet.ReadAs<TestMessage>();
+            Debug.Log($"Received test data: {msg.time}");
         }
         else
         {
@@ -330,7 +331,7 @@ public class DataTransmissionDiagnostics : MonoBehaviour
    }
    
    // Sending
-   AetherLink.Instance.SendData(PacketHeaders.PLAYER_DATA, playerName, position);
+   AetherLink.Instance.SendData(PacketHeaders.PLAYER_DATA, new PlayerUpdate { id = 1, pos = position });
    
    // Receiving
    if (packet.Header == PacketHeaders.PLAYER_DATA)
@@ -357,13 +358,12 @@ public class SerializationTester : MonoBehaviour
     
     void TestCustomTypeSerialization()
     {
-        // Register custom types before testing
-        AetherLink.RegisterSerializableType<PlayerData>(2001);
+        // Unmanaged structs are serialized natively
         
         // Test serialization
         var testData = new PlayerData
         {
-            name = "TestPlayer",
+            playerId = 1,
             position = Vector3.one,
             health = 100f
         };
@@ -383,7 +383,7 @@ public class SerializationTester : MonoBehaviour
 [System.Serializable]
 public struct PlayerData
 {
-    public string name;
+    public int playerId;
     public Vector3 position;
     public float health;
 }
@@ -461,7 +461,7 @@ public class NetworkOptimizer : MonoBehaviour
     [SerializeField] private bool batchSmallUpdates = true;
     
     private float lastUpdateTime;
-    private List<object> batchedData = new List<object>();
+    private List<Vector3> batchedData = new List<Vector3>();
     
     void Update()
     {
@@ -482,7 +482,7 @@ public class NetworkOptimizer : MonoBehaviour
         
         if (batchSmallUpdates && batchedData.Count > 0)
         {
-            // Send batched data
+            // Send batched data primitives
             AetherLink.Instance.SendData(5001, batchedData.ToArray());
             batchedData.Clear();
         }
@@ -502,7 +502,7 @@ public class NetworkOptimizer : MonoBehaviour
         AetherLink.Instance.SendData(5002, position);
     }
     
-    public void AddToBatch(object data)
+    public void AddToBatch(Vector3 data)
     {
         if (batchSmallUpdates)
         {
@@ -785,14 +785,13 @@ AetherLink.Instance.StartLink();
 
 
 ### "Serialization failed"
-**Cause:** Unregistered custom type or non-serializable object
+**Cause:** Used managed types (objects, strings, arrays) in zero-allocation pipeline
 **Solution:**
 ```csharp
-// Register custom types
-AetherLink.RegisterSerializableType<MyCustomType>(1001);
+// Use unmanaged structs only for generic transmission
+public struct ValidPayload { public int id; public float value; }
 
-// Or use built-in serializable types only
-AetherLink.Instance.SendData(1002, "string", 42, Vector3.zero);
+AetherLink.Instance.SendData(1002, new ValidPayload { id = 42, value = 1.5f });
 ```
 
 
