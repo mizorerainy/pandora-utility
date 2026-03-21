@@ -267,6 +267,7 @@ Create two simple scripts to test basic connectivity:
 
 2. **Intermediate Development**
    - [Advanced Scenarios](examples/advanced-scenarios.md) - Complex networking patterns
+   - [Cross-Project Contracts](examples/shared-contracts.md) - Using unmanaged structs between separate App projects
    - [API Reference](api-reference.md) - Complete technical documentation
 
 3. **Production Readiness**
