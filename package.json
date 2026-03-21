@@ -1,22 +1,20 @@
 {
-  "name": "com.mizorerainy.pandora-network-utility",
-  "version": "1.0.1",
-  "displayName": "Pandora Network Utility",
-  "description": "A comprehensive network utility package for Unity projects, providing essential networking tools and utilities.",
+  "name": "com.mizorerainy.pandora-utility",
+  "version": "1.0.2",
+  "displayName": "Pandora Utility Manager",
+  "description": "A comprehensive utility package for Unity projects, providing essential tools and extensions.",
   "unity": "2021.3",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.0.2"
   },
   "keywords": [
-    "networking",
-    "lan",
-    "communication",
-    "tcp",
-    "udp",
-    "discovery",
+    "utility",
+    "manager",
+    "tools",
+    "editor",
+    "pandora",
     "async",
-    "unitask",
-    "utility"
+    "unitask"
   ],
   "author": {
     "name": "MizoreRainy",
@@ -24,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MizoreRainy/pandora-network-utility.git"
+    "url": "https://github.com/MizoreRainy/pandora-utility.git"
   },
   "license": "MIT"
 }

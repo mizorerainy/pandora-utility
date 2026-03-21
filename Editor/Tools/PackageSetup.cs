@@ -535,7 +535,6 @@ namespace MizoreRainy.Pandora.Editor.Tools
 					if (request.Status == StatusCode.Success)
 					{
 						Debug.Log($"Successfully installed package: {_packageId}");
-						EditorUtility.DisplayDialog("Installation Success", $"Successfully installed {_packageId}.", "OK");
 						UpdateScriptingDefines();
 						AssetDatabase.Refresh();
 						tcs.TrySetResult(true);
@@ -543,9 +542,6 @@ namespace MizoreRainy.Pandora.Editor.Tools
 					else if (request.Status >= StatusCode.Failure)
 					{
 						Debug.LogError($"Failed to install package {_packageId} from '{_packageVersionOrUrl}'. Error: {request.Error.message}");
-						EditorUtility.DisplayDialog("Installation Failed",
-							$"Failed to install package '{_packageId}'.\n\nError: {request.Error.message}\n\nPlease check the console for details.",
-							"OK");
 						tcs.TrySetResult(false);
 					}
 				}
