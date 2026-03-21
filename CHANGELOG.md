@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted global state into an isolated `ConfigRegistry` for improved testability and mockability
 - Zero-reflection initialization using `UnityEditor.TypeCache` and a runtime `ConfigTypeCacheSO` scriptable object
 - Editor-time validation for early feedback on unsupported configuration types
+- Added native array support (`T[]`) for configuration values, supporting both inline brackets `[]` and YAML standard sequence lists `- item`
+- Updated Config Editor UI to natively support visualizing, re-arranging, and editing arrays
 
 #### AetherLink Network System  
 - UDP/TCP hybrid networking solution for Unity projects

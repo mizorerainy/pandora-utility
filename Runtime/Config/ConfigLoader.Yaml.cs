@@ -266,6 +266,23 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					foreach (var flattenedKvp in flattenedChildren) result[flattenedKvp.Key] = flattenedKvp.Value;
 				}
 			}
+			else if (_yamlData is IList<object> list)
+			{
+				var elements = new List<string>();
+				foreach (var element in list)
+				{
+					if (element == null) elements.Add("");
+					else
+					{
+						string strVal = element.ToString();
+						if (strVal.Contains(",") || strVal.Contains(" ") || strVal.StartsWith("[") || strVal.EndsWith("]"))
+							elements.Add($"\"{strVal.Replace("\"", "\\\"")}\"");
+						else
+							elements.Add(strVal);
+					}
+				}
+				if (!string.IsNullOrEmpty(_prefix)) result[_prefix] = "[" + string.Join(", ", elements) + "]";
+			}
 			else
 			{
 				if (!string.IsNullOrEmpty(_prefix)) result[_prefix] = _yamlData;

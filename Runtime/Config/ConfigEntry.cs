@@ -41,6 +41,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		string GroupName { get; }
 
 		/// <summary>
+		///     Gets the optional custom background color hex code for displaying this setting in the Editor UI.
+		/// </summary>
+		string BackgroundColorHex { get; }
+
+		/// <summary>
 		///     Gets the type of the value stored in the configuration entry.
 		/// </summary>
 		Type ValueType { get; }
@@ -124,6 +129,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		public string GroupName { get; }
 
 		/// <summary>
+		///     Gets the optional custom background color hex code for displaying this setting in the Editor UI.
+		/// </summary>
+		public string BackgroundColorHex { get; }
+
+		/// <summary>
 		///     Gets the type of the value for the configuration entry.
 		/// </summary>
 		public Type ValueType => typeof(T);
@@ -158,6 +168,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			Key = _attribute.Key;
 			Description = _attribute.Description;
+			BackgroundColorHex = _attribute.BackgroundColorHex;
 			GroupName = _groupName;
 
 			try

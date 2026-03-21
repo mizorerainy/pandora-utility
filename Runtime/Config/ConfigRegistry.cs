@@ -1,5 +1,6 @@
 using MizoreRainy.Pandora;
 using System.Collections.Generic;
+using MizoreRainy.Pandora.ConfigUtility.Parsers;
 
 namespace MizoreRainy.Pandora.ConfigUtility
 {
@@ -17,6 +18,9 @@ namespace MizoreRainy.Pandora.ConfigUtility
         /// <summary>
         ///     Represents a collection of registered configuration value parsers.
         /// </summary>
-        public readonly List<IConfigValueParser> Parsers = new();
+        public readonly List<IConfigValueParser> Parsers = new List<IConfigValueParser>
+        {
+            new Parsers.ArrayConfigParser()
+        };
     }
 }

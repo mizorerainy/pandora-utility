@@ -61,7 +61,13 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			GUILayout.Space(10);
 			string descText = isNarrow ? "Desc" : "Show Descriptions";
 			_ShowDescriptions = GUILayout.Toggle(_ShowDescriptions, descText, EditorStyles.toolbarButton, GUILayout.ExpandWidth(false));
-			if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.ExpandWidth(false))) RefreshSettings();
+			if (GUILayout.Button("Reset to Defaults", EditorStyles.toolbarButton, GUILayout.ExpandWidth(false))) 
+			{
+				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
+				if (EditorUtility.DisplayDialog("Reset All to Defaults?",
+						$"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.",
+						"Reset", "Cancel")) ResetToDefaultsAndNotify();
+			}
 			EditorGUILayout.EndHorizontal();
 
 			EditorGUI.BeginDisabledGroup(EditorApplication.isCompiling || EditorApplication.isPlayingOrWillChangePlaymode);
@@ -152,20 +158,20 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			GUILayout.Space(5);
 
 			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
-			var oldColorAction = GUI.backgroundColor;
-			GUI.backgroundColor = new Color(0.4f, 0.8f, 0.4f, 1f); // Green tint
-			if (GUILayout.Button("Save Changes", GUILayout.Height(30))) SaveChangesAndNotify();
-			GUI.backgroundColor = oldColorAction;
+			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
+			Rect saveRect = GUILayoutUtility.GetRect(new GUIContent("Save Changes"), GUI.skin.button, GUILayout.Height(20));
+			if (DrawHoldButton(saveRect, "Hold to Save", new Color(0.4f, 0.8f, 0.4f, 1f), ref _SaveHoldStartTime, ref _SaveSuccessTime))
+			{
+				SaveChangesAndNotify();
+			}
 			EditorGUI.EndDisabledGroup();
 
 			GUILayout.Space(2);
 
-			if (GUILayout.Button("Reset to Defaults", GUILayout.Height(30)))
+			Rect discardRect = GUILayoutUtility.GetRect(new GUIContent("Discard Changes"), GUI.skin.button, GUILayout.Height(20));
+			if (DrawHoldButton(discardRect, "Hold to Discard", new Color(0.8f, 0.8f, 0.2f, 1f), ref _DiscardHoldStartTime, ref _DiscardSuccessTime))
 			{
-				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
-				if (EditorUtility.DisplayDialog("Reset All to Defaults?",
-						$"This will overwrite '{configFileName}' with the default values defined in your code.\n\nThis action cannot be undone.",
-						"Reset", "Cancel")) ResetToDefaultsAndNotify();
+				DiscardChangesAndNotify();
 			}
 
 			GUILayout.Space(5);
@@ -228,10 +234,21 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			var entry = _setting.Entry;
 
 			var originalColor = GUI.backgroundColor;
+			if (_setting.HasCustomColor) GUI.backgroundColor = _setting.CustomColor;
 			if (!_setting.IsValid) GUI.backgroundColor = new Color(1f, 0.6f, 0.6f);
 
-			EditorGUILayout.BeginVertical();
-			EditorGUILayout.Space(4);
+			if (_setting.HasCustomColor || !_setting.IsValid)
+			{
+				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+			}
+			else
+			{
+				EditorGUILayout.BeginVertical();
+				EditorGUILayout.Space(4);
+			}
+
+			// Restore immediately so inner controls (labels, input fields, inner arrays) aren't tinted
+			GUI.backgroundColor = originalColor;
 
 			bool isBool = entry.ValueType == typeof(bool);
 
@@ -509,6 +526,10 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				{
 					newValue = EditorGUILayout.EnumPopup(_label, (Enum)_setting.CurrentValue);
 				}
+				else if (entry.ValueType.IsArray && entry.ValueType.GetArrayRank() == 1)
+				{
+					newValue = DrawArrayField(_setting, _label);
+				}
 				else
 				{
 					EditorGUILayout.LabelField(_label,
@@ -524,9 +545,191 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				var setValueMethod = entry.GetType().GetMethod("SetValue");
 				setValueMethod?.Invoke(entry, new[] { newValue });
 				_setting.CurrentValue = newValue;
-				if (entry.ValueType != typeof(Vector3) && entry.ValueType != typeof(Color))
+				if (entry.ValueType != typeof(Vector3) && entry.ValueType != typeof(Color) && !entry.ValueType.IsArray)
 					_setting.RawValue = newValue.ToString();
 			}
+		}
+
+		private object DrawArrayField(DisplaySetting _setting, GUIContent _label)
+		{
+			var entry = _setting.Entry;
+			Type elementType = entry.ValueType.GetElementType();
+
+			if (!_ArrayLists.TryGetValue(entry.Key, out var rList))
+			{
+				var list = new List<object>();
+				if (_setting.CurrentValue is Array arr)
+				{
+					foreach (var item in arr) list.Add(item);
+				}
+
+				rList = new UnityEditorInternal.ReorderableList(list, typeof(object), true, true, true, true);
+				
+				rList.elementHeightCallback = (int index) => {
+					return EditorGUIUtility.singleLineHeight + 4;
+				};
+
+				rList.drawHeaderCallback = (Rect rect) => {
+					EditorGUI.LabelField(rect, _label);
+				};
+
+				rList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) => {
+					rect.y += 2;
+					rect.height = EditorGUIUtility.singleLineHeight;
+					
+					var currentList = (List<object>)rList.list;
+					var elementValue = currentList[index];
+					
+					EditorGUI.BeginChangeCheck();
+					object newElementValue = DrawElementField(rect, elementValue, elementType);
+					if (EditorGUI.EndChangeCheck())
+					{
+						currentList[index] = newElementValue;
+						GUI.changed = true;
+					}
+				};
+
+				rList.onAddCallback = (UnityEditorInternal.ReorderableList l) => {
+					object def = elementType.IsValueType ? Activator.CreateInstance(elementType) : (elementType == typeof(string) ? "" : null);
+					l.list.Add(def);
+					GUI.changed = true;
+				};
+
+				rList.onRemoveCallback = (UnityEditorInternal.ReorderableList l) => {
+					UnityEditorInternal.ReorderableList.defaultBehaviours.DoRemoveButton(l);
+					GUI.changed = true;
+				};
+
+				rList.onReorderCallbackWithDetails = (UnityEditorInternal.ReorderableList l, int oldIndex, int newIndex) => {
+					GUI.changed = true;
+				};
+
+				_ArrayLists[entry.Key] = rList;
+			}
+			else
+			{
+				var list = (List<object>)rList.list;
+				if (_setting.CurrentValue is Array arr && arr.Length != list.Count)
+				{
+					list.Clear();
+					foreach (var item in arr) list.Add(item);
+				}
+			}
+
+			bool wasChanged = GUI.changed;
+			GUI.changed = false;
+
+			rList.DoLayoutList();
+
+			bool isChangedNow = GUI.changed;
+			GUI.changed = wasChanged || isChangedNow;
+
+			if (isChangedNow)
+			{
+				var currentList = (List<object>)rList.list;
+				Array newArray = Array.CreateInstance(elementType, currentList.Count);
+				for (int i = 0; i < currentList.Count; i++)
+				{
+					newArray.SetValue(currentList[i], i);
+				}
+				
+				var parser = ConfigLoader.GetParserForType(entry.ValueType);
+				if (parser != null)
+				{
+					_setting.RawValue = parser.ToString(newArray);
+				}
+				_setting.IsValid = true;
+				return newArray;
+			}
+
+			return null;
+		}
+
+		private object DrawElementField(Rect rect, object value, Type type)
+		{
+			if (type == typeof(string)) return EditorGUI.TextField(rect, value as string ?? "");
+			if (type == typeof(bool)) return EditorGUI.Toggle(rect, value != null && (bool)value);
+			if (type == typeof(int)) return EditorGUI.IntField(rect, value != null ? (int)value : 0);
+			if (type == typeof(float)) return EditorGUI.FloatField(rect, value != null ? (float)value : 0f);
+			if (type == typeof(Vector3)) return EditorGUI.Vector3Field(rect, GUIContent.none, value != null ? (Vector3)value : Vector3.zero);
+			if (type == typeof(Color)) return EditorGUI.ColorField(rect, GUIContent.none, value != null ? (Color)value : Color.white);
+			if (type.IsEnum) return EditorGUI.EnumPopup(rect, value != null ? (Enum)value : (Enum)Activator.CreateInstance(type));
+			
+			EditorGUI.LabelField(rect, $"Unsupported Element: {type.Name}");
+			return value;
+		}
+
+		private bool DrawHoldButton(Rect rect, string text, Color baseColor, ref double holdStartTime, ref double successTime)
+		{
+			bool triggered = false;
+			float holdDurationRequired = 0.5f; // 0.5 seconds to trigger
+			float progress = 0f;
+
+			float timeSinceSuccess = (float)(EditorApplication.timeSinceStartup - successTime);
+			bool isSuccessFlash = timeSinceSuccess < 0.4f;
+			Color finalBaseColor = baseColor * 0.5f;
+
+			if (isSuccessFlash)
+			{
+				float flashT = Mathf.PingPong(timeSinceSuccess * 6f, 1f);
+				finalBaseColor = Color.Lerp(Color.white, baseColor, flashT);
+				Repaint();
+			}
+
+			int controlID = GUIUtility.GetControlID(FocusType.Passive);
+			Event e = Event.current;
+			bool isHovered = rect.Contains(e.mousePosition);
+
+			if (e.type == EventType.MouseDown && e.button == 0 && isHovered)
+			{
+				GUIUtility.hotControl = controlID;
+				holdStartTime = EditorApplication.timeSinceStartup;
+				e.Use();
+			}
+
+			if (GUIUtility.hotControl == controlID)
+			{
+				Repaint(); 
+				if (e.type == EventType.MouseUp || (!isHovered && e.type == EventType.MouseDrag))
+				{
+					GUIUtility.hotControl = 0;
+					holdStartTime = 0;
+					if (e.type == EventType.MouseUp) e.Use();
+				}
+				else if (e.type == EventType.Repaint)
+				{
+					float durationHeld = (float)(EditorApplication.timeSinceStartup - holdStartTime);
+					progress = Mathf.Clamp01(durationHeld / holdDurationRequired);
+
+					if (progress >= 1f)
+					{
+						GUIUtility.hotControl = 0;
+						holdStartTime = 0;
+						successTime = EditorApplication.timeSinceStartup;
+						triggered = true;
+						EditorApplication.Beep();
+					}
+				}
+			}
+
+			EditorGUI.DrawRect(rect, finalBaseColor);
+
+			if (GUIUtility.hotControl == controlID && progress > 0f)
+			{
+				Rect fillRect = new Rect(rect.x, rect.y, rect.width * progress, rect.height);
+				EditorGUI.DrawRect(fillRect, baseColor);
+			}
+
+			if (isHovered && GUIUtility.hotControl == 0) 
+			{
+				EditorGUI.DrawRect(rect, new Color(1,1,1,0.1f));
+			}
+
+			var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+			style.normal.textColor = Color.white;
+			GUI.Label(rect, text, style);
+
+			return triggered;
 		}
 
 		#endregion

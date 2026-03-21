@@ -63,6 +63,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			/// </summary>
 			public string RawValue; // Holds the text field's current string, used for validation
 
+			public bool HasCustomColor;
+			public Color CustomColor;
+
 			/// <summary>
 			///     Indicates whether the current value of the setting is valid.
 			///     If set to false, it usually means the input does not pass validation checks,

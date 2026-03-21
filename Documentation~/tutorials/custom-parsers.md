@@ -1,6 +1,8 @@
 # Creating Custom Configuration Parsers
 
-The Pandora Configuration System natively supports primitive types, strings, enums, and common Unity types like `Vector3` and `Color`. However, you might want to use strong types like `System.Net.IPAddress` or `System.Uri` in your configuration files.
+The Pandora Configuration System natively supports primitive types, strings, enums, common Unity types like `Vector3` and `Color`, as well as **Arrays (`T[]`)** out-of-the-box. Array configuration supports inline syntax `[1, 2, 3]` and standard YAML sequence lists.
+
+However, you might want to use strong types like `System.Net.IPAddress` or `System.Uri` in your configuration files.
 
 To avoid bloat, these are not built into the core library, but they are incredibly easy to add via parsers.
 

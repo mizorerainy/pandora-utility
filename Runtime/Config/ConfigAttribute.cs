@@ -41,6 +41,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		public string Description { get; }
 
 		/// <summary>
+		/// Gets the optional custom background color hex code for displaying this setting in the Editor UI.
+		/// </summary>
+		public string BackgroundColorHex { get; }
+
+		/// <summary>
 		/// Represents an attribute used to define configuration metadata for a field.
 		/// This attribute can be applied to fields to specify a configuration key,
 		/// default value, and an optional description.
@@ -53,11 +58,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// This attribute is typically used in classes that represent configuration
 		/// settings to define metadata for each configuration option.
 		/// </example>
-		public ConfigAttribute(string _key, object _defaultValue, string _description = "")
+		public ConfigAttribute(string _key, object _defaultValue, string _description = "", string _backgroundColorHex = "")
 		{
 			Key = _key;
 			DefaultValue = _defaultValue;
 			Description = _description;
+			BackgroundColorHex = _backgroundColorHex;
 		}
 	}
 }

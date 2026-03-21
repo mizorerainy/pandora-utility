@@ -75,6 +75,11 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		private double _HighlightStartTime = 0;
 		private int _GroupRenderIndex = 0;
 		private bool _ShowDescriptions = false;
+		private Dictionary<string, UnityEditorInternal.ReorderableList> _ArrayLists = new Dictionary<string, UnityEditorInternal.ReorderableList>();
+		private double _SaveHoldStartTime = 0;
+		private double _DiscardHoldStartTime = 0;
+		private double _SaveSuccessTime = 0;
+		private double _DiscardSuccessTime = 0;
 
 		#endregion
 
@@ -140,6 +145,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		private void RefreshSettings()
 		{
 			ConfigLoader.EnsureInitialized();
+			_ArrayLists.Clear();
 			var settings = ConfigLoader.Registry.Settings;
 			if (settings == null)
 			{
@@ -164,11 +170,22 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				}
 
 				var currentValue = setting.GetType().GetProperty("Value")?.GetValue(setting);
+				
+				bool hasCustomColor = false;
+				Color customColor = Color.clear;
+				if (!string.IsNullOrEmpty(setting.BackgroundColorHex) && ColorUtility.TryParseHtmlString(setting.BackgroundColorHex, out var parsedColor))
+				{
+					hasCustomColor = true;
+					customColor = parsedColor;
+				}
+
 				currentNode.Settings.Add(new DisplaySetting
 				{
 					Entry = setting,
 					CurrentValue = currentValue,
-					RawValue = currentValue?.ToString() ?? ""
+					RawValue = currentValue?.ToString() ?? "",
+					HasCustomColor = hasCustomColor,
+					CustomColor = customColor
 				});
 			}
 
@@ -182,7 +199,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		/// </summary>
 		/// <remarks>
 		///     This method clears the current GUI control focus and attempts to save the updated configuration.
-		///     If the operation is successful, a dialog is displayed to confirm the save.
 		///     Any exceptions during the saving process are silently ignored.
 		/// </remarks>
 		private async void SaveChangesAndNotify()
@@ -191,8 +207,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			{
 				GUI.FocusControl(null);
 				await ConfigLoader.SaveAsync();
-				var configFileName = Path.GetFileName(ConfigLoader.GetConfigPath());
-				EditorUtility.DisplayDialog("Success", $"Configuration saved successfully to {configFileName}.", "OK");
 			}
 			catch (Exception)
 			{
@@ -218,6 +232,27 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			catch (Exception)
 			{
 				/* Ignored */
+			}
+		}
+
+		/// <summary>
+		///     Discards all unsaved configuration changes in the editor,
+		///     reloads the settings directly from the configuration file,
+		///     and updates the editor UI to reflect the restored values.
+		/// </summary>
+		private async void DiscardChangesAndNotify()
+		{
+			try
+			{
+				GUI.FocusControl(null);
+				// Awaiting LoadFromFileAsync effectively overwrites current in-memory settings.
+				await ConfigLoader.LoadFromFileAsync();
+				RefreshSettings();
+				Repaint();
+			}
+			catch (Exception e)
+			{
+				Debug.LogError($"Failed to discard changes: {e.Message}");
 			}
 		}
 
