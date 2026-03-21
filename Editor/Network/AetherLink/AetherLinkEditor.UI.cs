@@ -28,9 +28,9 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 		#region GUI Drawing Methods
 
 		/// <summary>
-		/// Draws the header section.
+		/// Draws the initial setup wizard for unconfigured components.
 		/// </summary>
-		private new void DrawHeader()
+		private void DrawSetupWizard()
 		{
 			EditorGUILayout.BeginVertical("box");
 			var headerStyle = new GUIStyle(EditorStyles.boldLabel)
@@ -38,8 +38,94 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 				fontSize = 16,
 				alignment = TextAnchor.MiddleCenter
 			};
-			EditorGUILayout.LabelField("AetherLink Network Manager", headerStyle);
+			EditorGUILayout.LabelField("AetherLink Setup Wizard", headerStyle);
+			EditorGUILayout.Space();
+			EditorGUILayout.LabelField("Select the operating mode for this component:");
+
+			var linkModeProp = _SettingsProp.FindPropertyRelative("LinkMode");
+			
+			EditorGUILayout.BeginHorizontal();
+			var oldColor = GUI.backgroundColor;
+			GUI.backgroundColor = _MasterColor;
+			if (GUILayout.Button("SERVER / MASTER", GUILayout.Height(30)))
+			{
+				linkModeProp.enumValueIndex = (int)AetherLink.Mode.Master;
+			}
+			GUI.backgroundColor = _SlaveColor;
+			if (GUILayout.Button("CLIENT / SLAVE", GUILayout.Height(30)))
+			{
+				linkModeProp.enumValueIndex = (int)AetherLink.Mode.Slave;
+			}
+			GUI.backgroundColor = oldColor;
+			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.Space();
+			EditorGUILayout.LabelField("Choose your Network Address (Leave default for Localhost):");
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("UdpBroadcastPort"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("TcpConnectionPort"));
+
+			EditorGUILayout.Space();
+			EditorGUILayout.Space();
+
+			EditorGUILayout.BeginHorizontal();
+			GUI.backgroundColor = Color.green;
+			if (GUILayout.Button("Complete Setup", GUILayout.Height(25)))
+			{
+				_IsConfiguredProp.boolValue = true;
+			}
+			GUI.backgroundColor = oldColor;
+			
+			if (GUILayout.Button("Skip Wizard", GUILayout.Height(25)))
+			{
+				_IsConfiguredProp.boolValue = true;
+			}
+			EditorGUILayout.EndHorizontal();
+
 			EditorGUILayout.EndVertical();
+		}
+
+		/// <summary>
+		/// Draws the header section.
+		/// </summary>
+		private new void DrawHeader()
+		{
+			var linkModeProp = _SettingsProp.FindPropertyRelative("LinkMode");
+			var currentMode = (AetherLink.Mode)linkModeProp.enumValueIndex;
+			string modeLabel = currentMode == AetherLink.Mode.Master ? "MASTER MODE" : "SLAVE MODE";
+			string switchLabel = currentMode == AetherLink.Mode.Master ? "Switch to SLAVE" : "Switch to MASTER";
+
+			var originalColor = GUI.backgroundColor;
+			GUI.backgroundColor = currentMode == AetherLink.Mode.Master ? _MasterColor : _SlaveColor;
+
+			EditorGUILayout.BeginVertical("box");
+			EditorGUILayout.BeginHorizontal();
+			
+			var headerStyle = new GUIStyle(EditorStyles.boldLabel)
+			{
+				fontSize = 16,
+				alignment = TextAnchor.MiddleLeft,
+				richText = true
+			};
+			EditorGUILayout.LabelField($"AETHERLINK <i>({modeLabel})</i>", headerStyle);
+
+			GUI.enabled = !Application.isPlaying;
+			GUI.backgroundColor = currentMode == AetherLink.Mode.Master ? _SlaveColor : _MasterColor;
+			if (GUILayout.Button(switchLabel, GUILayout.Width(130), GUILayout.Height(24)))
+			{
+				linkModeProp.enumValueIndex = currentMode == AetherLink.Mode.Master 
+					? (int)AetherLink.Mode.Slave 
+					: (int)AetherLink.Mode.Master;
+			}
+			GUI.backgroundColor = currentMode == AetherLink.Mode.Master ? _MasterColor : _SlaveColor;
+			GUI.enabled = true;
+
+			EditorGUILayout.EndHorizontal();
+			
+			var subStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
+			EditorGUILayout.LabelField("High Performance Network Transport", subStyle);
+			EditorGUILayout.EndVertical();
+
+			GUI.backgroundColor = originalColor;
 			EditorGUILayout.Space();
 		}
 
@@ -62,47 +148,7 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			}
 		}
 
-		/// <summary>
-		/// Draws the Master/Slave mode toggles buttons with improved layout.
-		/// </summary>
-		private void DrawModeSelection()
-		{
-			var linkModeProp = _SettingsProp.FindPropertyRelative("LinkMode");
-			var currentMode = (AetherLink.Mode)linkModeProp.enumValueIndex;
 
-			// Create a horizontal layout with label and buttons
-			EditorGUILayout.BeginVertical("box");
-
-			EditorGUILayout.BeginHorizontal();
-			EditorGUILayout.LabelField("Link Mode:", GUILayout.Width(80));
-
-			var originalColor = GUI.backgroundColor;
-
-			// Master button
-			GUI.backgroundColor = currentMode == AetherLink.Mode.Master ? _MasterColor : _FaintColor;
-			if (GUILayout.Button("Master", GUILayout.Height(25)))
-			{
-				linkModeProp.enumValueIndex = (int)AetherLink.Mode.Master;
-			}
-
-			// Slave button
-			GUI.backgroundColor = currentMode == AetherLink.Mode.Slave ? _SlaveColor : _FaintColor;
-			if (GUILayout.Button("Slave", GUILayout.Height(25)))
-			{
-				linkModeProp.enumValueIndex = (int)AetherLink.Mode.Slave;
-			}
-
-			GUI.backgroundColor = originalColor;
-			EditorGUILayout.EndHorizontal();
-
-			// Show mode description
-			var modeDescription = currentMode == AetherLink.Mode.Master
-				? "Master listens for connections and broadcasts discovery packets."
-				: "Slave searches for and connects to a Master.";
-			EditorGUILayout.HelpBox(modeDescription, MessageType.Info);
-
-			EditorGUILayout.EndVertical();
-		}
 
 		/// <summary>
 		/// Draws the real-time status box shown in Play Mode.
@@ -110,6 +156,12 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 		/// <param name="_link">The target AetherLink instance.</param>
 		private void DrawStatusBox(AetherLink _link)
 		{
+			var linkModeProp = _SettingsProp.FindPropertyRelative("LinkMode");
+			var currentMode = (AetherLink.Mode)linkModeProp.enumValueIndex;
+			
+			var originalColor = GUI.backgroundColor;
+			GUI.backgroundColor = currentMode == AetherLink.Mode.Master ? _MasterColor : _SlaveColor;
+
 			EditorGUILayout.BeginVertical("box");
 			EditorGUILayout.LabelField("Runtime Status", EditorStyles.boldLabel);
 
@@ -147,6 +199,7 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			}
 
 			EditorGUILayout.EndVertical();
+			GUI.backgroundColor = originalColor;
 		}
 
 		/// <summary>
@@ -253,70 +306,74 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 
 
 		/// <summary>
-		/// Draws the main configuration settings in a foldout group.
+		/// Draws the main configuration settings organized into a tabbed toolbar.
 		/// </summary>
-		private void DrawSettings()
+		private void DrawTabbedSettings()
 		{
-			_SettingsFoldout = EditorGUILayout.Foldout(_SettingsFoldout, "Configuration Settings", true, EditorStyles.foldoutHeader);
-			if (_SettingsFoldout)
+			EditorGUILayout.BeginVertical("box");
+			EditorGUILayout.LabelField("Configuration", EditorStyles.boldLabel);
+			EditorGUILayout.Space(2);
+
+			_SettingsTab = GUILayout.Toolbar(_SettingsTab, _TabNames, GUILayout.Height(25));
+			EditorGUILayout.Space();
+
+			EditorGUI.indentLevel++;
+
+			switch (_SettingsTab)
 			{
-				EditorGUI.indentLevel++;
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("StartOnEnable"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("StopOnPause"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("AllowSameMachineConnection"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("UdpBroadcastPort"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("TcpConnectionPort"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HandshakeInterval"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HeartbeatInterval"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HeartbeatTimeout"));
-				EditorGUI.indentLevel--;
+				case 0: // General
+					DrawGeneralSettingsTab();
+					break;
+				case 1: // Network
+					DrawNetworkSettingsTab();
+					break;
+				case 2: // Advanced
+					DrawAdvancedSettingsTab();
+					break;
 			}
+
+			EditorGUI.indentLevel--;
+			EditorGUILayout.EndVertical();
 			EditorGUILayout.Space();
 		}
 
-		/// <summary>
-		/// Draws advanced configuration settings in a foldout group.
-		/// </summary>
-		private void DrawAdvancedSettings()
+		private void DrawGeneralSettingsTab()
 		{
-			_AdvancedFoldout = EditorGUILayout.Foldout(_AdvancedFoldout, "Advanced Settings", true, EditorStyles.foldoutHeader);
-			if (_AdvancedFoldout)
-			{
-				EditorGUI.indentLevel++;
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("MaxPacketSize"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("TcpBufferSize"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("DebugUdpMessages"));
-				EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("DebugTcpMessages"));
-				EditorGUI.indentLevel--;
-			}
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("StartOnEnable"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("StopOnPause"));
+			
+			GUI.enabled = !Application.isPlaying;
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("AllowSameMachineConnection"));
+			GUI.enabled = true;
+		}
+
+		private void DrawNetworkSettingsTab()
+		{
+			GUI.enabled = !Application.isPlaying;
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("UdpBroadcastPort"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("TcpConnectionPort"));
+			GUI.enabled = true;
+			
 			EditorGUILayout.Space();
+			EditorGUILayout.LabelField("Timings (Milliseconds)", EditorStyles.miniBoldLabel);
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HandshakeInterval"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HeartbeatInterval"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("HeartbeatTimeout"));
 		}
 
-		/// <summary>
-		/// Draws the UnityEvent fields in a foldout group.
-		/// </summary>
-		private void DrawEvents()
+		private void DrawAdvancedSettingsTab()
 		{
-			_EventsFoldout = EditorGUILayout.Foldout(_EventsFoldout, "Events", true, EditorStyles.foldoutHeader);
-			if (_EventsFoldout)
-			{
-				// Add null checks to prevent NullReferenceException
-				if (_OnConnectedProp != null)
-					EditorGUILayout.PropertyField(_OnConnectedProp);
-				else
-					EditorGUILayout.HelpBox("OnConnected event property not found.", MessageType.Warning);
-
-				if (_OnPacketReceivedProp != null)
-					EditorGUILayout.PropertyField(_OnPacketReceivedProp);
-				else
-					EditorGUILayout.HelpBox("OnPacketReceived event property not found.", MessageType.Warning);
-
-				if (_OnDisconnectedProp != null)
-					EditorGUILayout.PropertyField(_OnDisconnectedProp);
-				else
-					EditorGUILayout.HelpBox("OnDisconnected event property not found.", MessageType.Warning);
-			}
+			EditorGUILayout.LabelField("Data Allocation Limit", EditorStyles.miniBoldLabel);
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("MaxPacketSize"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("TcpBufferSize"));
+			
+			EditorGUILayout.Space();
+			EditorGUILayout.LabelField("Diagnosis", EditorStyles.miniBoldLabel);
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("DebugUdpMessages"));
+			EditorGUILayout.PropertyField(_SettingsProp.FindPropertyRelative("DebugTcpMessages"));
 		}
+
+
 
 
 		/// <summary>
@@ -330,6 +387,178 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			if (_bytes < 1024 * 1024) return $"{_bytes / 1024.0:F1} KB";
 			if (_bytes < 1024 * 1024 * 1024) return $"{_bytes / (1024.0 * 1024.0):F1} MB";
 			return $"{_bytes / (1024.0 * 1024.0 * 1024.0):F1} GB";
+		}
+
+		/// <summary>
+		/// Draws the Simulation Tools section allowing developers to fake network events.
+		/// </summary>
+		/// <param name="_link">The target AetherLink instance</param>
+		private void DrawSimulationTools(AetherLink _link)
+		{
+			_SimulationFoldout = EditorGUILayout.Foldout(_SimulationFoldout, "Packet Simulation (Editor Only)", true, EditorStyles.foldoutHeader);
+			if (_SimulationFoldout)
+			{
+				EditorGUILayout.BeginVertical("box");
+				
+				EditorGUILayout.BeginHorizontal();
+				EditorGUILayout.LabelField("Connection Simulation", EditorStyles.boldLabel);
+				
+				GUI.enabled = !_link.IsConnected;
+				if (GUILayout.Button("Simulate Connect"))
+				{
+					_link.EditorSimulateConnect();
+				}
+				
+				GUI.enabled = _link.IsConnected;
+				if (GUILayout.Button("Simulate Disconnect"))
+				{
+					_link.EditorSimulateDisconnect();
+				}
+				GUI.enabled = true;
+				
+				EditorGUILayout.EndHorizontal();
+
+				EditorGUILayout.Space();
+				EditorGUILayout.LabelField("Packet Simulation Profiles", EditorStyles.boldLabel);
+
+				if (_AvailableProfiles == null || _AvailableProfiles.Length == 0)
+				{
+					EditorGUILayout.HelpBox("No Simulation Profiles found in the project. Create one to test packets.", MessageType.Info);
+					if (GUILayout.Button("+ Create New Profile Asset..."))
+					{
+						CreateNewSimulationProfile();
+					}
+				}
+				else
+				{
+					EditorGUILayout.BeginHorizontal();
+					_SelectedProfileIndex = EditorGUILayout.Popup("Active Profile", _SelectedProfileIndex, _ProfileNames);
+					if (GUILayout.Button("Refresh", GUILayout.Width(65))) RefreshSimulationProfiles();
+					if (GUILayout.Button("Edit Asset", GUILayout.Width(80))) Selection.activeObject = _AvailableProfiles[_SelectedProfileIndex];
+					EditorGUILayout.EndHorizontal();
+
+					var selectedProfile = _AvailableProfiles[_SelectedProfileIndex];
+					if (selectedProfile != null && selectedProfile.Packets != null)
+					{
+						EditorGUILayout.Space();
+						for (int i = 0; i < selectedProfile.Packets.Count; i++)
+						{
+							var packet = selectedProfile.Packets[i];
+							
+							EditorGUILayout.BeginVertical("box");
+							string foldKey = $"AetherLink_Profile_{selectedProfile.name}_Packet_{i}_Fold";
+							bool isExpanded = EditorPrefs.GetBool(foldKey, false);
+
+							EditorGUILayout.BeginHorizontal();
+							isExpanded = EditorGUILayout.Foldout(isExpanded, packet.Name, true, EditorStyles.foldoutHeader);
+							EditorPrefs.SetBool(foldKey, isExpanded);
+
+							var oldColor = GUI.backgroundColor;
+
+							if (!isExpanded)
+							{
+								GUI.backgroundColor = new Color(0.3f, 0.7f, 0.3f); // Green
+								if (GUILayout.Button("Receive", GUILayout.Width(70)))
+								{
+									byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(packet.JsonPayload ?? "");
+									_link.EditorSimulateReceive(packet.Header, payloadBytes);
+								}
+
+								GUI.backgroundColor = new Color(0.3f, 0.5f, 0.9f); // Blue
+								if (GUILayout.Button("Send", GUILayout.Width(50)))
+								{
+									byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(packet.JsonPayload ?? "");
+									_link.EditorSimulateSend(packet.Header, payloadBytes);
+								}
+								GUI.backgroundColor = oldColor;
+							}
+							EditorGUILayout.EndHorizontal();
+
+							if (isExpanded)
+							{
+								EditorGUILayout.Space(2);
+								EditorGUILayout.BeginHorizontal();
+
+								EditorGUILayout.BeginVertical();
+								EditorGUI.BeginChangeCheck();
+								ushort newHeader = (ushort)EditorGUILayout.IntField("Header ID", packet.Header);
+								EditorGUILayout.LabelField("String Payload (Converted to UTF8 Bytes internally)", EditorStyles.miniLabel);
+
+								var textAreaStyle = new GUIStyle(EditorStyles.textArea) { wordWrap = true };
+								string newPayload = EditorGUILayout.TextArea(packet.JsonPayload, textAreaStyle, GUILayout.MinHeight(42));
+
+								if (EditorGUI.EndChangeCheck())
+								{
+									packet.Header = newHeader;
+									packet.JsonPayload = newPayload;
+									selectedProfile.Packets[i] = packet;
+									EditorUtility.SetDirty(selectedProfile);
+								}
+								EditorGUILayout.EndVertical();
+
+								EditorGUILayout.Space(4);
+
+								EditorGUILayout.BeginVertical(GUILayout.Width(130));
+								var btnOpts = new GUILayoutOption[] { GUILayout.Height(30), GUILayout.ExpandWidth(true) };
+
+								GUI.backgroundColor = new Color(0.3f, 0.7f, 0.3f); // Green
+								if (GUILayout.Button("Simulate Receive", btnOpts))
+								{
+									byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(packet.JsonPayload ?? "");
+									_link.EditorSimulateReceive(packet.Header, payloadBytes);
+								}
+
+								EditorGUILayout.Space(4);
+
+								GUI.backgroundColor = new Color(0.3f, 0.5f, 0.9f); // Blue
+								if (GUILayout.Button("Simulate Send", btnOpts))
+								{
+									byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(packet.JsonPayload ?? "");
+									_link.EditorSimulateSend(packet.Header, payloadBytes);
+								}
+								GUI.backgroundColor = oldColor;
+								EditorGUILayout.EndVertical();
+
+								EditorGUILayout.EndHorizontal();
+							}
+							EditorGUILayout.EndVertical();
+							EditorGUILayout.Space(2);
+						}
+					}
+					
+					EditorGUILayout.Space();
+					if (GUILayout.Button("+ Create New Profile Asset..."))
+					{
+						CreateNewSimulationProfile();
+					}
+				}
+
+				EditorGUILayout.EndVertical();
+			}
+			EditorGUILayout.Space();
+		}
+
+		private void CreateNewSimulationProfile()
+		{
+			var path = EditorUtility.SaveFilePanelInProject("Create Simulation Profile", "NewSimulationProfile", "asset", "Create a new simulation profile asset");
+			if (!string.IsNullOrEmpty(path))
+			{
+				var newProfile = ScriptableObject.CreateInstance<SimulationProfile>();
+				newProfile.Packets.Add(new SimulationPacket { Name = "Sample Packet", Header = 1000, JsonPayload = "{}" });
+				AssetDatabase.CreateAsset(newProfile, path);
+				AssetDatabase.SaveAssets();
+				RefreshSimulationProfiles();
+				
+				// Auto-select the newly created profile
+				for (int i = 0; i < _AvailableProfiles.Length; i++)
+				{
+					if (_AvailableProfiles[i] == newProfile)
+					{
+						_SelectedProfileIndex = i;
+						break;
+					}
+				}
+			}
 		}
 
 		#endregion

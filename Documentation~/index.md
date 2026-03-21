@@ -45,6 +45,7 @@ Development utilities to enhance your Unity workflow and productivity.
 - Development helpers
 - AetherLink inspector tools
 - Network debugging utilities
+- Packet Simulation Profiles (ScriptableObjects for Editor-time network testing)
 
 ---
 
@@ -107,6 +108,7 @@ Explore practical implementations in the **Samples~** directory:
 - **Data Serialization Sample** - Custom type serialization examples
 - **Real-time Sync Sample** - Game state synchronization
 - **Advanced Features Sample** - Async patterns and managed handlers
+- **AetherLink Simulation Profile Sample** - Pre-configured simulation profile asset (`SampleLoginProfile.asset`)
 
 Import samples via Package Manager: **Window > Package Manager > Pandora Utility > Samples**
 

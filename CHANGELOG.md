@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unity MonoBehaviour integration with proper lifecycle management
 - Full UniTask async/await support for non-blocking operations
 - Cross-platform compatibility for all Unity networking platforms
+- Packet Simulation Profiles with ScriptableObjects for Editor-time network testing
 
 #### Build Utilities
 - Automated build pipeline system

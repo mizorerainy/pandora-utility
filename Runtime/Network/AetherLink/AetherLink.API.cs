@@ -276,5 +276,67 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
+		#region Editor Simulation Helpers
+
+#if UNITY_EDITOR
+		/// <summary>
+		///     Simulates a successful TCP connection from the given endpoint directly through the Inspector UI.
+		/// </summary>
+		public void EditorSimulateConnect(IPEndPoint _endpoint = null)
+		{
+			if (!IsRunning) StartLink();
+
+			_IsSimulationMode = true;
+			_IsTcpConnected = true;
+			_endpoint ??= new IPEndPoint(IPAddress.Loopback, m_Settings.TcpConnectionPort);
+			_OnConnectedChannel.Writer.TryWrite(_endpoint);
+			OnConnectedInspector?.Invoke(_endpoint);
+			PandoraLogger.LogNetwork($"[Simulated] Connected to {_endpoint}");
+		}
+
+		/// <summary>
+		///     Simulates a TCP disconnection directly through the Inspector UI.
+		/// </summary>
+		public void EditorSimulateDisconnect()
+		{
+			if (!_IsTcpConnected) return;
+			
+			_IsSimulationMode = false;
+			_IsTcpConnected = false;
+			_Statistics.DisconnectionCount++;
+			_OnDisconnectedChannel.Writer.TryWrite(AsyncUnit.Default);
+			OnDisconnectedInspector?.Invoke();
+			PandoraLogger.LogNetwork("[Simulated] Disconnected.");
+		}
+
+		/// <summary>
+		///     Simulates receiving a data packet directly through the Inspector UI.
+		/// </summary>
+		public void EditorSimulateReceive(ushort _header, byte[] _payload)
+		{
+			var packet = new PacketResponse(_header, _payload, new IPEndPoint(IPAddress.Loopback, m_Settings.TcpConnectionPort), "LocalHost (Simulated)", 0);
+			_Statistics.PacketsReceived++;
+			_Statistics.BytesReceived += _payload?.Length ?? 0;
+			_OnPacketReceivedChannel.Writer.TryWrite(packet);
+			OnPacketReceivedInspector?.Invoke(packet);
+		}
+
+		/// <summary>
+		///     Simulates sending a packet by passing it directly to the internal send queue.
+		/// </summary>
+		public void EditorSimulateSend(ushort _header, byte[] _payload)
+		{
+			if (!IsConnected)
+			{
+				PandoraLogger.LogNetworkWarning("Cannot simulate send. AetherLink is not connected!");
+				return;
+			}
+			PandoraLogger.LogNetwork($"[Simulated Outgoing] Sending {(_payload != null ? _payload.Length : 0)} bytes with header {_header}.");
+			SendDataInternalAsync(_header, _payload ?? Array.Empty<byte>()).Forget();
+		}
+#endif
+
+		#endregion
+
 	}
 }

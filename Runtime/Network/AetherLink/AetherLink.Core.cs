@@ -532,6 +532,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		/// <summary>
 		///     Monitors the connection by validating the time difference between heartbeats. If the time exceeds the
 		///     configured heartbeat timeout, it triggers a disconnection process.
+		///     On simulation mode, it will not trigger a disconnection process.
 		/// </summary>
 		/// <param name="_token">
 		///     A CancellationToken used to stop the loop when cancellation is requested.
@@ -543,6 +544,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 			while (!_token.IsCancellationRequested)
 			{
+#if UNITY_EDITOR
+				if (_IsSimulationMode)
+				{
+					await UniTask.Delay(250, cancellationToken: _token);
+					continue;
+				}
+#endif
+
 				if (IsConnected && Time.time - _LastHeartbeatTime > m_Settings.HeartbeatTimeout * _MS_TO_SEC_MULTIPLIER)
 				{
 					PandoraLogger.LogNetworkWarning("Connection lost due to heartbeat timeout!");

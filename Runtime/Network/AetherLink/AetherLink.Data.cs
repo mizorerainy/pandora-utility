@@ -123,9 +123,31 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		/// </exception>
 		private async UniTask SendDataInternalAsync(ushort _header, byte[] _payload)
 		{
-			if (!IsConnected || _TCPConnection == null)
+			if (!IsConnected)
 			{
 				PandoraLogger.LogNetworkWarning("Cannot send data: Not connected");
+				return;
+			}
+
+#if UNITY_EDITOR
+			if (_IsSimulationMode)
+			{
+				var simPacket = CreateTcpPacket(_header, _payload);
+				_Statistics.PacketsSent++;
+				_Statistics.BytesSent += simPacket.Length;
+
+				if (_header != _TCP_CMD_HEARTBEAT)
+				{
+					PandoraLogger.LogNetwork($"[Simulated] Sent TCP packet: Header={_header}, Size={simPacket.Length} bytes");
+				}
+
+				return;
+			}
+#endif
+
+			if (_TCPConnection == null)
+			{
+				PandoraLogger.LogNetworkWarning("Cannot send data: No TCP connection");
 				return;
 			}
 

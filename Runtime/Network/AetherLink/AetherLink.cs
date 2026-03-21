@@ -168,6 +168,8 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#region Fields
 
+		[HideInInspector] public bool IsConfigured;
+
 		[SerializeField] private Settings m_Settings = Settings.Default;
 #if HAVE_CYSHARP_UNITASK
 		// Channels are the backing source for the public async stream API
@@ -185,6 +187,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		// State variables
 		private bool _IsUdpConnected;
 		private bool _IsTcpConnected;
+		private bool _IsSimulationMode;
 		private float _LastHeartbeatTime;
 		private Guid _InstanceId;
 #if HAVE_CYSHARP_UNITASK
@@ -283,6 +286,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 				_IsTcpConnected = false;
 				_IsUdpConnected = false;
+				_IsSimulationMode = false;
 				RemoteEndPoint = null;
 			}
 			catch (Exception ex)

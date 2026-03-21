@@ -33,15 +33,21 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 		#region Private Members
 
 		private SerializedProperty _SettingsProp;
-		private SerializedProperty _OnConnectedProp;
-		private SerializedProperty _OnPacketReceivedProp;
-		private SerializedProperty _OnDisconnectedProp;
+		private SerializedProperty _IsConfiguredProp;
 
 		// Foldout states for the UI organization
-		private bool _SettingsFoldout = true;
-		private bool _EventsFoldout = true;
 		private bool _StatisticsFoldout = true;
 		private bool _AdvancedFoldout;
+		private bool _SimulationFoldout = true;
+
+		// Simulation Profiles State
+		private SimulationProfile[] _AvailableProfiles = new SimulationProfile[0];
+		private string[] _ProfileNames = new string[0];
+		private int _SelectedProfileIndex = 0;
+
+		// Settings Tab State
+		private int _SettingsTab = 0;
+		private readonly string[] _TabNames = { "General", "Network", "Advanced" };
 
 		// Editor update tracking
 		private double _LastUpdateTime;
@@ -60,9 +66,9 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 		{
 			// Cache SerializedProperty references for performance
 			_SettingsProp = serializedObject.FindProperty("m_Settings");
-			_OnConnectedProp = serializedObject.FindProperty("OnConnectedInspector");
-			_OnPacketReceivedProp = serializedObject.FindProperty("OnPacketReceivedInspector");
-			_OnDisconnectedProp = serializedObject.FindProperty("OnDisconnectedInspector");
+			_IsConfiguredProp = serializedObject.FindProperty("IsConfigured");
+
+			RefreshSimulationProfiles();
 
 			// Register for editor updates in play mode
 			if (Application.isPlaying)
@@ -94,10 +100,21 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			serializedObject.Update();
 			var link = (AetherLink)target;
 
-			// Header with logo/title
-			DrawHeader();
+			if (!_IsConfiguredProp.boolValue)
+			{
+				DrawSetupWizard();
+			}
+			else
+			{
+				DrawStandardUI(link);
+			}
 
-			DrawModeSelection();
+			serializedObject.ApplyModifiedProperties();
+		}
+
+		private void DrawStandardUI(AetherLink link)
+		{
+			DrawHeader();
 
 			EditorGUILayout.Space();
 
@@ -109,14 +126,29 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			{
 				DrawStatusBox(link);
 				DrawControlButtons(link);
+				DrawSimulationTools(link);
 				DrawStatistics(link);
 			}
 
-			DrawSettings();
-			DrawAdvancedSettings();
-			DrawEvents();
+			DrawTabbedSettings();
+		}
+		private void RefreshSimulationProfiles()
+		{
+			string[] guids = AssetDatabase.FindAssets("t:SimulationProfile");
+			_AvailableProfiles = new SimulationProfile[guids.Length];
+			_ProfileNames = new string[guids.Length];
 
-			serializedObject.ApplyModifiedProperties();
+			for (int i = 0; i < guids.Length; i++)
+			{
+				string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+				_AvailableProfiles[i] = AssetDatabase.LoadAssetAtPath<SimulationProfile>(path);
+				_ProfileNames[i] = _AvailableProfiles[i] != null ? _AvailableProfiles[i].ProfileName : "Missing Profile";
+			}
+			
+			if (_SelectedProfileIndex >= _AvailableProfiles.Length)
+			{
+				_SelectedProfileIndex = 0;
+			}
 		}
 
 		#endregion

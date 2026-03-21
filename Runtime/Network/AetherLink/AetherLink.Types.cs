@@ -94,7 +94,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				LinkMode = Mode.Master,
 				StartOnEnable = false,
 				StopOnPause = false,
-				AllowSameMachineConnection = false,
+				AllowSameMachineConnection = true,
 				UdpBroadcastPort = 7778,
 				TcpConnectionPort = 7777,
 				HandshakeInterval = 2000,
