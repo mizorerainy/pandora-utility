@@ -158,7 +158,6 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			GUILayout.Space(5);
 
 			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
-			EditorGUI.BeginDisabledGroup(_IsAnyFieldInvalid);
 			Rect saveRect = GUILayoutUtility.GetRect(new GUIContent("Save Changes"), GUI.skin.button, GUILayout.Height(20));
 			if (DrawHoldButton(saveRect, "Hold to Save", new Color(0.4f, 0.8f, 0.4f, 1f), ref _SaveHoldStartTime, ref _SaveSuccessTime))
 			{
