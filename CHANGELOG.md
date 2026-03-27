@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an initial `Samples~` directory containing `SampleBuildLoggerTask`, demonstrating ASCII file tree reporting of build outputs in the internal console.
 - Created `Assets > Create > Pandora > Post Build Task Script` quick scaffolding context menu to rapidly bootstrap new custom post-build actions.
 
+### Fixed
+
+#### Editor UI
+- Fixed an issue where the Managed Profile UI would aggressively cycle through profiles if multiple managed definitions mapped to an identical underlying Unity Build Profile.
+- Prevented unexpected profile foldout state resets upon Unity domain reloads by dynamically linking the foldout session states to persistent string identifiers.
+- Addressed inflexible UI profile pinning by allowing developers to explicitly force shared duplicate configuration profiles to properly adopt the 'Active Profile' rendering slot.
+
 ## [1.0.0] - 2026-03-21
 
 ### Added

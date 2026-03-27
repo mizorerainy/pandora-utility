@@ -38,37 +38,81 @@ namespace MizoreRainy.Pandora.BuildUtility
 		/// </remarks>
 		private Dictionary<string, int> _ProfileTabs = new Dictionary<string, int>();
 
+		private void EnsureActiveProfileAtTop(SerializedProperty profilesProp)
+		{
+#if UNITY_6000_0_OR_NEWER
+			var activeProfile = BuildProfile.GetActiveBuildProfile();
+			if (activeProfile == null || profilesProp == null || profilesProp.arraySize <= 1) return;
+
+			// Prevent infinite GUI swapping loops if multiple Managed Profiles 
+			// map to the exact same underlying Unity Build Profile.
+			if (_BuildSettingsData.ManagedProfiles[0].TargetProfile == activeProfile) return;
+
+			for (int i = 1; i < profilesProp.arraySize; i++)
+			{
+				var profile = _BuildSettingsData.ManagedProfiles[i];
+				if (profile != null && profile.TargetProfile == activeProfile)
+				{
+					profilesProp.MoveArrayElement(i, 0);
+					break;
+				}
+			}
+#endif
+		}
+
 		private void DrawManagedProfilesSection()
 		{
 			GUILayout.Label("Managed Profiles", EditorStyles.boldLabel);
 
 			var profilesProp = _SerializedSettings?.FindProperty("ManagedProfiles");
+			if (profilesProp == null) return;
 
-			for (var i = 0; i < _BuildSettingsData.ManagedProfiles.Count; i++)
+			EnsureActiveProfileAtTop(profilesProp);
+
+			bool hasActiveProfile = false;
+#if UNITY_6000_0_OR_NEWER
+			var activeUnityProfile = BuildProfile.GetActiveBuildProfile();
+			if (activeUnityProfile != null && _BuildSettingsData.ManagedProfiles.Count > 0 && 
+				_BuildSettingsData.ManagedProfiles[0].TargetProfile == activeUnityProfile)
+			{
+				hasActiveProfile = true;
+			}
+#endif
+
+			for (var i = 0; i < profilesProp.arraySize; i++)
 			{
 				var managedProfile = _BuildSettingsData.ManagedProfiles[i];
-				var profileProp = profilesProp?.GetArrayElementAtIndex(i);
-				var foldoutKey = $"config_{i}";
-				_FoldoutStates.TryAdd(foldoutKey, true);
+				var profileProp = profilesProp.GetArrayElementAtIndex(i);
+				
+				bool isActiveBox = hasActiveProfile && i == 0;
 
-#if UNITY_6000_0_OR_NEWER
-				var isActive = managedProfile.TargetProfile != null &&
-							   BuildProfile.GetActiveBuildProfile() == managedProfile.TargetProfile;
+				var foldoutKey = $"config_{managedProfile.Name}";
+				if (!_FoldoutStates.ContainsKey(foldoutKey))
+				{
+					_FoldoutStates[foldoutKey] = isActiveBox;
+				}
+
+				if (isActiveBox) 
+				{
+					EditorGUILayout.LabelField("Active Profile", EditorStyles.boldLabel);
+				}
+				else if ((i == 1 && hasActiveProfile) || (i == 0 && !hasActiveProfile))
+				{
+					EditorGUILayout.LabelField("Inactive Profiles", EditorStyles.boldLabel);
+				}
+
 				var originalBgColor = GUI.backgroundColor;
-				if (isActive) GUI.backgroundColor = new Color(.2f, .3f, .2f, 1f); // Subtle green for active box
-#endif
+				if (isActiveBox) GUI.backgroundColor = new Color(.2f, .4f, .2f, 1f);
 
 				EditorGUILayout.BeginVertical("box");
-#if UNITY_6000_0_OR_NEWER
 				GUI.backgroundColor = originalBgColor;
-#endif
 
 				// --- Clean Profile Header ---
 				EditorGUILayout.BeginHorizontal();
 
 				var displayName = string.IsNullOrEmpty(managedProfile.Name) ? "Unnamed Profile" : managedProfile.Name;
 #if UNITY_6000_0_OR_NEWER
-				if (isActive) displayName += "  [ACTIVE]";
+				if (isActiveBox) displayName = "★ " + displayName + "  [ACTIVE]";
 				
 				Texture2D smallIcon = null;
 				if (managedProfile.TargetProfile != null)
@@ -83,14 +127,42 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 				GUILayout.FlexibleSpace();
 
+				if (!isActiveBox)
+				{
+					int minSortIndex = hasActiveProfile ? 1 : 0;
+					
+					EditorGUI.BeginDisabledGroup(i <= minSortIndex);
+					if (GUILayout.Button("↑", GUILayout.Width(25)))
+					{
+						profilesProp.MoveArrayElement(i, i - 1);
+						EditorGUILayout.EndHorizontal();
+						EditorGUILayout.EndVertical();
+						break;
+					}
+					EditorGUI.EndDisabledGroup();
+
+					EditorGUI.BeginDisabledGroup(i >= profilesProp.arraySize - 1);
+					if (GUILayout.Button("↓", GUILayout.Width(25)))
+					{
+						profilesProp.MoveArrayElement(i, i + 1);
+						EditorGUILayout.EndHorizontal();
+						EditorGUILayout.EndVertical();
+						break;
+					}
+					EditorGUI.EndDisabledGroup();
+				}
+
 				if (GUILayout.Button(new GUIContent("X", "Remove Managed Profile"), GUILayout.Width(25)))
+				{
 					if (EditorUtility.DisplayDialog("Remove Profile",
 							$"Are you sure you want to remove '{managedProfile.Name}'?", "Yes", "No"))
 					{
-						_BuildSettingsData.ManagedProfiles.RemoveAt(i);
-						i--;
-						continue;
+						profilesProp.DeleteArrayElementAtIndex(i);
+						EditorGUILayout.EndHorizontal();
+						EditorGUILayout.EndVertical();
+						break;
 					}
+				}
 
 				EditorGUILayout.EndHorizontal();
 
@@ -105,7 +177,11 @@ namespace MizoreRainy.Pandora.BuildUtility
 			GUILayout.FlexibleSpace();
 
 			if (GUILayout.Button("Add New Managed Profile"))
+			{
 				_BuildSettingsData.ManagedProfiles.Add(new ManagedBuildProfile());
+				EditorUtility.SetDirty(_BuildSettingsData);
+				GUIUtility.ExitGUI();
+			}
 
 			EditorGUILayout.EndHorizontal();
 		}
@@ -241,7 +317,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 			// --- Action Buttons ---
 			if (_managedProfile.TargetProfile != null)
 			{
-				var isActive = BuildProfile.GetActiveBuildProfile() == _managedProfile.TargetProfile;
+				var isUnityActive = BuildProfile.GetActiveBuildProfile() == _managedProfile.TargetProfile;
+				var isPinnedActive = isUnityActive && _BuildSettingsData.ManagedProfiles.Count > 0 && _BuildSettingsData.ManagedProfiles[0] == _managedProfile;
 
 				GUILayout.Space(5);
 				GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
@@ -250,17 +327,34 @@ namespace MizoreRainy.Pandora.BuildUtility
 				EditorGUILayout.BeginHorizontal();
 
 				// Set Active Button
-				EditorGUI.BeginDisabledGroup(isActive);
-				if (GUILayout.Button(isActive ? "Already Active" : "Set Active")) BuildProfile.SetActiveBuildProfile(_managedProfile.TargetProfile);
+				EditorGUI.BeginDisabledGroup(isPinnedActive);
+				if (GUILayout.Button(isPinnedActive ? "Already Active" : (isUnityActive ? "Pin as Primary Active" : "Set Active")))
+				{
+					BuildProfile.SetActiveBuildProfile(_managedProfile.TargetProfile);
+					
+					// Forcibly move to top if it's not the pinned active one yet
+					var idx = _BuildSettingsData.ManagedProfiles.IndexOf(_managedProfile);
+					if (idx != 0 && idx != -1)
+					{
+						_profileProp.serializedObject.Update();
+						var parentArray = _profileProp.serializedObject.FindProperty("ManagedProfiles");
+						if (parentArray != null)
+						{
+							parentArray.MoveArrayElement(idx, 0);
+							_profileProp.serializedObject.ApplyModifiedProperties();
+						}
+						GUIUtility.ExitGUI();
+					}
+				}
 				EditorGUI.EndDisabledGroup();
 
 				EditorGUILayout.EndHorizontal();
 
 				// --- Build Button (Full Width) ---
 				GUILayout.Space(5);
-				EditorGUI.BeginDisabledGroup(!isActive);
+				EditorGUI.BeginDisabledGroup(!isUnityActive);
 				var originalColorButton = GUI.backgroundColor;
-				GUI.backgroundColor = isActive ? Color.cyan : Color.white;
+				GUI.backgroundColor = isUnityActive ? Color.cyan : Color.white;
 				if (GUILayout.Button($"Build '{_managedProfile.Name}'", GUILayout.Height(25)))
 				{
 					BuildProject(_managedProfile);
