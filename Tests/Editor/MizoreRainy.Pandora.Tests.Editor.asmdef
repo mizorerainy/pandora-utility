@@ -1,0 +1,27 @@
+{
+    "name": "MizoreRainy.Pandora.Tests.Editor",
+    "rootNamespace": "MizoreRainy.Pandora.Tests.Editor",
+    "references": [
+        "MizoreRainy.Pandora.Editor",
+        "MizoreRainy.Pandora.Runtime",
+        "MizoreRainy.Pandora.Runtime.Config",
+        "MizoreRainy.Pandora.Editor.Config",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
