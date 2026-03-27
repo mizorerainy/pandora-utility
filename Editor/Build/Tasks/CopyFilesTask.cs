@@ -9,12 +9,14 @@ namespace MizoreRainy.Pandora.BuildUtility
     public class CopyFilesTask : ManagedPostBuildTask
     {
         [Tooltip("Source folder or file. Can be absolute or relative to the project root (e.g., '../TestFolder').")]
+        [MizoreRainy.Pandora.Editor.Attributes.PathSelector]
         public string SourcePath = "";
 
         [Tooltip("If true, allows specifying a custom destination path relative to the build root.")]
         public bool SpecifyDestination = false;
 
         [Tooltip("Destination directory relative to the build root folder. Leave empty to copy directly into the build root.")]
+        [MizoreRainy.Pandora.Editor.Attributes.FolderSelector]
         public string DestinationRelativePath = "";
 
         public override void Execute(ManagedBuildProfile profile, string buildOutputPath)

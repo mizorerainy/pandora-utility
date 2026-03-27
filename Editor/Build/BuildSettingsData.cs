@@ -15,6 +15,9 @@ namespace MizoreRainy.Pandora.BuildUtility
 	[Serializable]
 	public class ManagedBuildProfile
 	{
+		[HideInInspector]
+		public string ID = Guid.NewGuid().ToString();
+
 		[Tooltip("A descriptive name for this managed profile (e.g., 'Windows - Production').")]
 		public string Name = "New Managed Profile";
 

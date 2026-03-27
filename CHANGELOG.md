@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented native `ReorderableList` in the Build Manager UI, fully supporting drag-and-drop task reordering.
 - Re-architected the legacy hard-coded string-based folder copy feature into a dedicated polymorphic `CopyFilesTask`.
 - Added an initial `Samples~` directory containing `SampleBuildLoggerTask`, demonstrating ASCII file tree reporting of build outputs in the internal console.
-- Created `Assets > Create > Pandora > Post Build Task Script` quick scaffolding context menu to rapidly bootstrap new custom post-build actions.
+- Added generic property attributes (`[FileSelector]`, `[FolderSelector]`, `[PathSelector]`, and `[UrlButton]`) to completely replace hard-coded custom UI layout iteration logic.
+- Transformed the `ZipAndUploadToGoogleDrive` sample script into a full built-in utility Action inside the package's internal `Tasks/` directory.
+- Added automatic browser URL opening logic to the Google Drive uploader utilizing `EditorApplication.delayCall`.
 
 ### Fixed
 

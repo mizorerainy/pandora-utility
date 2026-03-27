@@ -86,7 +86,13 @@ namespace MizoreRainy.Pandora.BuildUtility
 				
 				bool isActiveBox = hasActiveProfile && i == 0;
 
-				var foldoutKey = $"config_{managedProfile.Name}";
+				if (string.IsNullOrEmpty(managedProfile.ID))
+				{
+					managedProfile.ID = Guid.NewGuid().ToString();
+					EditorUtility.SetDirty(_BuildSettingsData);
+				}
+
+				var foldoutKey = $"config_{managedProfile.ID}";
 				if (!_FoldoutStates.ContainsKey(foldoutKey))
 				{
 					_FoldoutStates[foldoutKey] = isActiveBox;
@@ -409,11 +415,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 					// Header height
 					float height = EditorGUIUtility.singleLineHeight + 4f; 
 
-					if (taskObj is CopyFilesTask)
-					{
-						height += (EditorGUIUtility.singleLineHeight + 2f) * 2;
-					}
-					else if (taskObj != null)
+					if (taskObj != null)
 					{
 						var endProp = taskProp.GetEndProperty(false);
 						var childProp = taskProp.Copy();
@@ -450,45 +452,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 					}
 					rect.y += EditorGUIUtility.singleLineHeight + 4f;
 
-					if (taskObj is CopyFilesTask copyTask)
-					{
-						float h = EditorGUIUtility.singleLineHeight;
-						
-						// Line 1: Source
-						Rect rSource = new Rect(rect.x, rect.y, rect.width - 64, h);
-						Rect rBtn1 = new Rect(rect.x + rect.width - 62, rect.y, 30, h);
-						Rect rBtn2 = new Rect(rect.x + rect.width - 30, rect.y, 30, h);
-
-						copyTask.SourcePath = EditorGUI.TextField(rSource, "Source", copyTask.SourcePath);
-						if (GUI.Button(rBtn1, new GUIContent("📁", "Select Source Folder"), EditorStyles.miniButtonLeft))
-						{
-							var path = EditorUtility.OpenFolderPanel("Select Source Folder", "", "");
-							if (!string.IsNullOrEmpty(path)) { copyTask.SourcePath = path; GUI.FocusControl(null); }
-						}
-						if (GUI.Button(rBtn2, new GUIContent("📄", "Select Source File"), EditorStyles.miniButtonRight))
-						{
-							var path = EditorUtility.OpenFilePanel("Select Source File", "", "");
-							if (!string.IsNullOrEmpty(path)) { copyTask.SourcePath = path; GUI.FocusControl(null); }
-						}
-
-						// Line 2: Destination
-						rect.y += h + 2f;
-						if (!copyTask.SpecifyDestination)
-						{
-							Rect rPrefix = new Rect(rect.x, rect.y, EditorGUIUtility.labelWidth, h);
-							Rect rBtn = new Rect(rect.x + EditorGUIUtility.labelWidth, rect.y, 150, h);
-							EditorGUI.LabelField(rPrefix, "Destination");
-							if (GUI.Button(rBtn, "Default (Build Root)", EditorStyles.popup)) { copyTask.SpecifyDestination = true; }
-						}
-						else
-						{
-							Rect rDest = new Rect(rect.x, rect.y, rect.width - 32, h);
-							Rect rBtn = new Rect(rect.x + rect.width - 30, rect.y, 30, h);
-							copyTask.DestinationRelativePath = EditorGUI.TextField(rDest, "Destination (Relative)", copyTask.DestinationRelativePath);
-							if (GUI.Button(rBtn, new GUIContent("X", "Reset to Default"))) { copyTask.SpecifyDestination = false; copyTask.DestinationRelativePath = ""; GUI.FocusControl(null); }
-						}
-					}
-					else if (taskObj != null)
+					if (taskObj != null)
 					{
 						var endProp = taskProp.GetEndProperty(false);
 						var childProp = taskProp.Copy();
