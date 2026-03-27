@@ -5,7 +5,19 @@ All notable changes to the Pandora Network Utility Package will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-03-27
+
+### Added
+
+#### Build Utilities
+- Integrated a polymorphic post-build architecture utilizing `[SerializeReference]` for flexible, OS-agnostic post-build automation logic natively within the Unity Editor.
+- Introduced `ManagedPostBuildTask` base abstract class for powerful extension of the build pipeline logic.
+- Implemented native `ReorderableList` in the Build Manager UI, fully supporting drag-and-drop task reordering.
+- Re-architected the legacy hard-coded string-based folder copy feature into a dedicated polymorphic `CopyFilesTask`.
+- Added an initial `Samples~` directory containing `SampleBuildLoggerTask`, demonstrating ASCII file tree reporting of build outputs in the internal console.
+- Created `Assets > Create > Pandora > Post Build Task Script` quick scaffolding context menu to rapidly bootstrap new custom post-build actions.
+
+## [1.0.0] - 2026-03-21
 
 ### Added
 

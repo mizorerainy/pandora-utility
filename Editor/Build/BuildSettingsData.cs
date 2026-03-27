@@ -29,24 +29,9 @@ namespace MizoreRainy.Pandora.BuildUtility
 		[Tooltip("A suffix to append to the build artifact name (e.g., 'prd', 'dev').")]
 		public string BuildSuffix = "";
 
-		[Tooltip("List of copy operations to perform after a successful build.")]
-		public List<BuildCopyTask> PostBuildCopyTasks = new();
-	}
-
-	/// <summary>
-	/// Represents a post-build file or directory copy operation.
-	/// </summary>
-	[Serializable]
-	public class BuildCopyTask
-	{
-		[Tooltip("Source folder or file. Can be absolute or relative to the project root (e.g., '../TestFolder').")]
-		public string SourcePath = "";
-
-		[Tooltip("If true, allows specifying a custom destination path relative to the build root.")]
-		public bool SpecifyDestination = false;
-
-		[Tooltip("Destination directory relative to the build root folder. Leave empty to copy directly into the build root.")]
-		public string DestinationRelativePath = "";
+		[Tooltip("List of post-build actions to execute after a successful build. Tasks run in order.")]
+		[SerializeReference]
+		public List<ManagedPostBuildTask> PostBuildTasks = new();
 	}
 
 	/// <summary>

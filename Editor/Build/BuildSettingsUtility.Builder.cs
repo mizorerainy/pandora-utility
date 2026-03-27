@@ -241,81 +241,25 @@ namespace MizoreRainy.Pandora.BuildUtility
 		#region Post-Build Actions
 
 		/// <summary>
-		/// Executes all configured post-build copy tasks for a given managed profile.
+		/// Executes all configured post-build tasks for a given managed profile.
 		/// </summary>
-		private void ExecutePostBuildCopy(ManagedBuildProfile _profile, string _buildOutputPath)
+		private void ExecutePostBuildTasks(ManagedBuildProfile _profile, string _buildOutputPath)
 		{
-			if (_profile.PostBuildCopyTasks == null || _profile.PostBuildCopyTasks.Count == 0) return;
+			if (_profile.PostBuildTasks == null || _profile.PostBuildTasks.Count == 0) return;
 
-			var buildRoot = Path.GetDirectoryName(_buildOutputPath);
-			if (string.IsNullOrEmpty(buildRoot)) return;
-
-			var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-
-			foreach (var task in _profile.PostBuildCopyTasks)
+			foreach (var task in _profile.PostBuildTasks)
 			{
-				if (string.IsNullOrEmpty(task.SourcePath)) continue;
+				if (task == null || !task.IsEnabled) continue;
 
-				var sourceFullPath = task.SourcePath;
-				if (!Path.IsPathRooted(sourceFullPath))
-				{
-					sourceFullPath = Path.GetFullPath(Path.Combine(projectRoot, task.SourcePath));
-				}
-
-				if (!File.Exists(sourceFullPath) && !Directory.Exists(sourceFullPath))
-				{
-					PandoraLogger.LogBuildWarning($"Post-Build Copy: Source path does not exist: {sourceFullPath}");
-					continue;
-				}
-
-				var destRelative = task.SpecifyDestination ? task.DestinationRelativePath : "";
-				var destRoot = string.IsNullOrEmpty(destRelative) ? buildRoot : Path.Combine(buildRoot, destRelative);
-
+				PandoraLogger.LogBuild($"Executing post-build task: {task.GetType().Name}");
 				try
 				{
-					if (Directory.Exists(sourceFullPath))
-					{
-						var dirName = new DirectoryInfo(sourceFullPath).Name;
-						var destDir = Path.Combine(destRoot, dirName);
-						CopyDirectory(sourceFullPath, destDir);
-						PandoraLogger.LogBuild($"Post-Build Copy: Copied directory {sourceFullPath} to {destDir}");
-					}
-					else if (File.Exists(sourceFullPath))
-					{
-						if (!Directory.Exists(destRoot)) Directory.CreateDirectory(destRoot);
-						var fileName = Path.GetFileName(sourceFullPath);
-						var destFile = Path.Combine(destRoot, fileName);
-						File.Copy(sourceFullPath, destFile, true);
-						PandoraLogger.LogBuild($"Post-Build Copy: Copied file {sourceFullPath} to {destFile}");
-					}
+					task.Execute(_profile, _buildOutputPath);
 				}
 				catch (Exception ex)
 				{
-					PandoraLogger.LogBuildWarning($"Post-Build Copy failed for '{task.SourcePath}': {ex.Message}");
+					PandoraLogger.LogBuildWarning($"Post-build task {task.GetType().Name} failed: {ex.Message}\n{ex.StackTrace}");
 				}
-			}
-		}
-
-		/// <summary>
-		/// Recursively copies a directory and its contents.
-		/// </summary>
-		private void CopyDirectory(string _sourceDir, string _destDir)
-		{
-			var dir = new DirectoryInfo(_sourceDir);
-			if (!dir.Exists) return;
-
-			Directory.CreateDirectory(_destDir);
-
-			foreach (var file in dir.GetFiles())
-			{
-				var targetFilePath = Path.Combine(_destDir, file.Name);
-				file.CopyTo(targetFilePath, true);
-			}
-
-			foreach (var subDir in dir.GetDirectories())
-			{
-				var newDestDir = Path.Combine(_destDir, subDir.Name);
-				CopyDirectory(subDir.FullName, newDestDir);
 			}
 		}
 

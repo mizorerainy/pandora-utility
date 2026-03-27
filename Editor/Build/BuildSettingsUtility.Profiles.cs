@@ -42,9 +42,12 @@ namespace MizoreRainy.Pandora.BuildUtility
 		{
 			GUILayout.Label("Managed Profiles", EditorStyles.boldLabel);
 
+			var profilesProp = _SerializedSettings?.FindProperty("ManagedProfiles");
+
 			for (var i = 0; i < _BuildSettingsData.ManagedProfiles.Count; i++)
 			{
 				var managedProfile = _BuildSettingsData.ManagedProfiles[i];
+				var profileProp = profilesProp?.GetArrayElementAtIndex(i);
 				var foldoutKey = $"config_{i}";
 				_FoldoutStates.TryAdd(foldoutKey, true);
 
@@ -91,7 +94,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 				EditorGUILayout.EndHorizontal();
 
-				if (_FoldoutStates[foldoutKey]) DrawManagedProfileDetails(managedProfile);
+				if (_FoldoutStates[foldoutKey]) DrawManagedProfileDetails(managedProfile, profileProp);
 
 				EditorGUILayout.EndVertical();
 				GUILayout.Space(5);
@@ -115,7 +118,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 		/// The <see cref="ManagedBuildProfile" /> instance representing the managed profile
 		/// whose details are to be displayed and modified.
 		/// </param>
-		private void DrawManagedProfileDetails(ManagedBuildProfile _managedProfile)
+		/// <param name="_profileProp">The serialized property for this profile, used to draw SerializeReference lists.</param>
+		private void DrawManagedProfileDetails(ManagedBuildProfile _managedProfile, SerializedProperty _profileProp)
 		{
 #if UNITY_6000_0_OR_NEWER
 			EditorGUILayout.BeginVertical();
@@ -230,7 +234,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 				else
 				{
 					// Settings Tab - Post-Build Actions
-					DrawPostBuildActions(_managedProfile);
+					DrawPostBuildActions(_managedProfile, _profileProp);
 				}
 			}
 
@@ -270,93 +274,177 @@ namespace MizoreRainy.Pandora.BuildUtility
 #endif
 		}
 
+		private Dictionary<string, UnityEditorInternal.ReorderableList> _PostBuildTaskLists = new Dictionary<string, UnityEditorInternal.ReorderableList>();
+
 		/// <summary>
 		/// Renders the Post-Build Actions section for a managed profile.
 		/// </summary>
-		private void DrawPostBuildActions(ManagedBuildProfile _managedProfile)
+		private void DrawPostBuildActions(ManagedBuildProfile _managedProfile, SerializedProperty _profileProp)
 		{
 #if UNITY_6000_0_OR_NEWER
 			EditorGUILayout.LabelField("Post-Build Actions", EditorStyles.boldLabel);
 
-			if (_managedProfile.PostBuildCopyTasks == null)
-				_managedProfile.PostBuildCopyTasks = new List<BuildCopyTask>();
+			var tasksProp = _profileProp?.FindPropertyRelative("PostBuildTasks");
 
-			if (_managedProfile.PostBuildCopyTasks.Count == 0)
+			if (_managedProfile.PostBuildTasks == null)
+				_managedProfile.PostBuildTasks = new List<ManagedPostBuildTask>();
+
+			if (tasksProp == null) return;
+
+			if (tasksProp.arraySize == 0)
 			{
 				EditorGUILayout.HelpBox("No post-build actions configured.", MessageType.Info);
 			}
 
-			for (var i = 0; i < _managedProfile.PostBuildCopyTasks.Count; i++)
+			string listKey = tasksProp.propertyPath;
+			if (!_PostBuildTaskLists.TryGetValue(listKey, out var reorderableList))
 			{
-				var task = _managedProfile.PostBuildCopyTasks[i];
-				EditorGUILayout.BeginVertical("box");
+				reorderableList = new UnityEditorInternal.ReorderableList(_SerializedSettings, tasksProp, true, true, false, true);
 
-				EditorGUILayout.BeginHorizontal();
-				EditorGUILayout.LabelField($"Copy Task {i + 1}", EditorStyles.boldLabel);
-				GUILayout.FlexibleSpace();
-				if (GUILayout.Button(new GUIContent("X", "Remove Task"), GUILayout.Width(25)))
+				reorderableList.drawHeaderCallback = (Rect rect) =>
 				{
-					_managedProfile.PostBuildCopyTasks.RemoveAt(i);
-					i--;
-					EditorGUILayout.EndHorizontal();
-					EditorGUILayout.EndVertical();
-					continue;
-				}
+					EditorGUI.LabelField(rect, "Configured Actions");
+				};
 
-				EditorGUILayout.EndHorizontal();
-
-				// Source Path with File/Folder picker buttons
-				EditorGUILayout.BeginHorizontal();
-				task.SourcePath = EditorGUILayout.TextField("Source", task.SourcePath);
-				if (GUILayout.Button(new GUIContent("📁", "Select Source Folder"), EditorStyles.miniButtonLeft, GUILayout.Width(30)))
+				reorderableList.elementHeightCallback = (int index) =>
 				{
-					var path = EditorUtility.OpenFolderPanel("Select Source Folder", "", "");
-					if (!string.IsNullOrEmpty(path))
+					if (index >= tasksProp.arraySize) return 0;
+					var taskProp = tasksProp.GetArrayElementAtIndex(index);
+					var taskObj = _managedProfile.PostBuildTasks[index];
+					
+					// Header height
+					float height = EditorGUIUtility.singleLineHeight + 4f; 
+
+					if (taskObj is CopyFilesTask)
 					{
-						task.SourcePath = path;
-						GUI.FocusControl(null); // Remove focus to refresh UI
+						height += (EditorGUIUtility.singleLineHeight + 2f) * 2;
 					}
-				}
-				if (GUILayout.Button(new GUIContent("📄", "Select Source File"), EditorStyles.miniButtonRight, GUILayout.Width(30)))
-				{
-					var path = EditorUtility.OpenFilePanel("Select Source File", "", "");
-					if (!string.IsNullOrEmpty(path))
+					else if (taskObj != null)
 					{
-						task.SourcePath = path;
-						GUI.FocusControl(null);
+						var endProp = taskProp.GetEndProperty(false);
+						var childProp = taskProp.Copy();
+						bool enterChildren = true;
+						while (childProp.NextVisible(enterChildren) && !SerializedProperty.EqualContents(childProp, endProp))
+						{
+							enterChildren = false;
+							if (childProp.name == "IsEnabled") continue;
+							height += EditorGUI.GetPropertyHeight(childProp, true) + 2f;
+						}
 					}
-				}
-				EditorGUILayout.EndHorizontal();
+					return height + 8f;
+				};
 
-				// Destination Path toggle
-				EditorGUILayout.BeginHorizontal();
-				if (!task.SpecifyDestination)
+				reorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
 				{
-					EditorGUILayout.PrefixLabel("Destination");
-					if (GUILayout.Button("Default (Build Root)", EditorStyles.popup))
-					{
-						task.SpecifyDestination = true;
-					}
-				}
-				else
-				{
-					task.DestinationRelativePath = EditorGUILayout.TextField("Destination (Relative)", task.DestinationRelativePath);
-					if (GUILayout.Button(new GUIContent("X", "Reset to Default (Build Root)"), GUILayout.Width(25)))
-					{
-						task.SpecifyDestination = false;
-						task.DestinationRelativePath = "";
-						GUI.FocusControl(null);
-					}
-				}
-				EditorGUILayout.EndHorizontal();
+					if (index >= tasksProp.arraySize) return;
+					var taskProp = tasksProp.GetArrayElementAtIndex(index);
+					var taskObj = _managedProfile.PostBuildTasks[index];
+					var typeName = taskObj != null ? UnityEditor.ObjectNames.NicifyVariableName(taskObj.GetType().Name) : "Missing Task";
 
-				EditorGUILayout.EndVertical();
+					rect.y += 2f;
+					rect.height -= 4f;
+
+					var headerRect = new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight);
+					var enabledProp = taskProp.FindPropertyRelative("IsEnabled");
+					if (enabledProp != null)
+					{
+						enabledProp.boolValue = EditorGUI.ToggleLeft(headerRect, $"[{index + 1}] {typeName}", enabledProp.boolValue, EditorStyles.boldLabel);
+					}
+					else
+					{
+						EditorGUI.LabelField(headerRect, $"[{index + 1}] {typeName}", EditorStyles.boldLabel);
+					}
+					rect.y += EditorGUIUtility.singleLineHeight + 4f;
+
+					if (taskObj is CopyFilesTask copyTask)
+					{
+						float h = EditorGUIUtility.singleLineHeight;
+						
+						// Line 1: Source
+						Rect rSource = new Rect(rect.x, rect.y, rect.width - 64, h);
+						Rect rBtn1 = new Rect(rect.x + rect.width - 62, rect.y, 30, h);
+						Rect rBtn2 = new Rect(rect.x + rect.width - 30, rect.y, 30, h);
+
+						copyTask.SourcePath = EditorGUI.TextField(rSource, "Source", copyTask.SourcePath);
+						if (GUI.Button(rBtn1, new GUIContent("📁", "Select Source Folder"), EditorStyles.miniButtonLeft))
+						{
+							var path = EditorUtility.OpenFolderPanel("Select Source Folder", "", "");
+							if (!string.IsNullOrEmpty(path)) { copyTask.SourcePath = path; GUI.FocusControl(null); }
+						}
+						if (GUI.Button(rBtn2, new GUIContent("📄", "Select Source File"), EditorStyles.miniButtonRight))
+						{
+							var path = EditorUtility.OpenFilePanel("Select Source File", "", "");
+							if (!string.IsNullOrEmpty(path)) { copyTask.SourcePath = path; GUI.FocusControl(null); }
+						}
+
+						// Line 2: Destination
+						rect.y += h + 2f;
+						if (!copyTask.SpecifyDestination)
+						{
+							Rect rPrefix = new Rect(rect.x, rect.y, EditorGUIUtility.labelWidth, h);
+							Rect rBtn = new Rect(rect.x + EditorGUIUtility.labelWidth, rect.y, 150, h);
+							EditorGUI.LabelField(rPrefix, "Destination");
+							if (GUI.Button(rBtn, "Default (Build Root)", EditorStyles.popup)) { copyTask.SpecifyDestination = true; }
+						}
+						else
+						{
+							Rect rDest = new Rect(rect.x, rect.y, rect.width - 32, h);
+							Rect rBtn = new Rect(rect.x + rect.width - 30, rect.y, 30, h);
+							copyTask.DestinationRelativePath = EditorGUI.TextField(rDest, "Destination (Relative)", copyTask.DestinationRelativePath);
+							if (GUI.Button(rBtn, new GUIContent("X", "Reset to Default"))) { copyTask.SpecifyDestination = false; copyTask.DestinationRelativePath = ""; GUI.FocusControl(null); }
+						}
+					}
+					else if (taskObj != null)
+					{
+						var endProp = taskProp.GetEndProperty(false);
+						var childProp = taskProp.Copy();
+						bool enterChildren = true;
+						while (childProp.NextVisible(enterChildren) && !SerializedProperty.EqualContents(childProp, endProp))
+						{
+							enterChildren = false;
+							if (childProp.name == "IsEnabled") continue; 
+							
+							float propHeight = EditorGUI.GetPropertyHeight(childProp, true);
+							var propRect = new Rect(rect.x, rect.y, rect.width, propHeight);
+							EditorGUI.PropertyField(propRect, childProp, true);
+							rect.y += propHeight + 2f;
+						}
+					}
+				};
+
+				_PostBuildTaskLists[listKey] = reorderableList;
 			}
 
+			reorderableList.DoLayoutList();
+
 			GUILayout.Space(5);
-			if (GUILayout.Button("+ Add Copy Task")) _managedProfile.PostBuildCopyTasks.Add(new BuildCopyTask());
+			var taskTypes = TypeCache.GetTypesDerivedFrom<ManagedPostBuildTask>()
+				.Where(t => !t.IsAbstract && !t.IsInterface).ToList();
+
+			if (taskTypes.Count > 0)
+			{
+				if (GUILayout.Button("+ Add Action", "dropdown"))
+				{
+					GenericMenu menu = new GenericMenu();
+					foreach (var t in taskTypes)
+					{
+						var typeToAdd = t;
+						menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(t.Name)), false, () =>
+						{
+							var newTask = (ManagedPostBuildTask)Activator.CreateInstance(typeToAdd);
+							_SerializedSettings.Update();
+							tasksProp.arraySize++;
+							var newElement = tasksProp.GetArrayElementAtIndex(tasksProp.arraySize - 1);
+							newElement.managedReferenceValue = newTask;
+							_SerializedSettings.ApplyModifiedProperties();
+						});
+					}
+					menu.ShowAsContext();
+				}
+			}
 #endif
 		}
+
 
 		#endregion
 
@@ -416,7 +504,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 				PandoraLogger.LogBuild(
 					$"Build SUCCEEDED: {report.summary.outputPath} ({report.summary.totalSize / 1024 / 1024} MB)");
 					
-				ExecutePostBuildCopy(_managedProfile, report.summary.outputPath);
+				ExecutePostBuildTasks(_managedProfile, report.summary.outputPath);
 				
 				Process.Start(Path.GetDirectoryName(report.summary.outputPath) ?? string.Empty);
 			}
