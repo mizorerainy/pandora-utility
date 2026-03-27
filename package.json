@@ -1,6 +1,6 @@
 {
   "name": "com.mizorerainy.pandora-utility",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Pandora Utility Manager",
   "description": "A comprehensive utility package for Unity projects, providing essential tools and extensions.",
   "unity": "2021.3",
@@ -24,5 +24,12 @@
     "type": "git",
     "url": "https://github.com/MizoreRainy/pandora-utility.git"
   },
+  "samples": [
+    {
+      "displayName": "Build Utility Custom Actions",
+      "description": "Example scripts detailing how to write completely customized native C# deployment and build-logging pipelines.",
+      "path": "Samples~/Build Utility"
+    }
+  ],
   "license": "MIT"
 }

@@ -44,6 +44,12 @@ namespace MizoreRainy.Pandora.BuildUtility
 		private BuildSettingsData _BuildSettingsData;
 
 		/// <summary>
+		/// The SerializedObject representation of the BuildSettingsData asset.
+		/// Used for drawing fields like SerializeReference lists natively in the editor window.
+		/// </summary>
+		private SerializedObject _SerializedSettings;
+
+		/// <summary>
 		/// Represents the current scroll position within the editor window's scroll view.
 		/// This variable is used to preserve or restore the scroll state during navigation and interaction
 		/// with the graphical user interface elements in the Build Utility editor window.
@@ -134,6 +140,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 		private void OnEnable()
 		{
 			LoadOrCreateSettings();
+			if (_BuildSettingsData != null) _SerializedSettings = new SerializedObject(_BuildSettingsData);
 			_NewVersion = PlayerSettings.bundleVersion;
 			ValidateVersionString(true);
 			EditorApplication.update += OnEditorUpdate;
@@ -199,8 +206,12 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 				_ScrollPosition = EditorGUILayout.BeginScrollView(_ScrollPosition);
 
+				if (_SerializedSettings != null) _SerializedSettings.Update();
+
 				DrawGlobalSettingsSection();
 				DrawManagedProfilesSection();
+
+				if (_SerializedSettings != null) _SerializedSettings.ApplyModifiedProperties();
 
 				EditorGUILayout.EndScrollView();
 

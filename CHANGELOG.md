@@ -5,7 +5,28 @@ All notable changes to the Pandora Network Utility Package will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-03-27
+
+### Added
+
+#### Build Utilities
+- Integrated a polymorphic post-build architecture utilizing `[SerializeReference]` for flexible, OS-agnostic post-build automation logic natively within the Unity Editor.
+- Introduced `ManagedPostBuildTask` base abstract class for powerful extension of the build pipeline logic.
+- Implemented native `ReorderableList` in the Build Manager UI, fully supporting drag-and-drop task reordering.
+- Re-architected the legacy hard-coded string-based folder copy feature into a dedicated polymorphic `CopyFilesTask`.
+- Added an initial `Samples~` directory containing `SampleBuildLoggerTask`, demonstrating ASCII file tree reporting of build outputs in the internal console.
+- Added generic property attributes (`[FileSelector]`, `[FolderSelector]`, `[PathSelector]`, and `[UrlButton]`) to completely replace hard-coded custom UI layout iteration logic.
+- Transformed the `ZipAndUploadToGoogleDrive` sample script into a full built-in utility Action inside the package's internal `Tasks/` directory.
+- Added automatic browser URL opening logic to the Google Drive uploader utilizing `EditorApplication.delayCall`.
+
+### Fixed
+
+#### Editor UI
+- Fixed an issue where the Managed Profile UI would aggressively cycle through profiles if multiple managed definitions mapped to an identical underlying Unity Build Profile.
+- Prevented unexpected profile foldout state resets upon Unity domain reloads by dynamically linking the foldout session states to persistent string identifiers.
+- Addressed inflexible UI profile pinning by allowing developers to explicitly force shared duplicate configuration profiles to properly adopt the 'Active Profile' rendering slot.
+
+## [1.0.0] - 2026-03-21
 
 ### Added
 
