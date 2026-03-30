@@ -120,6 +120,17 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				PandoraLogger.LogConfig($"Initializing synchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
+				if (Registry.Settings.Count == 0)
+				{
+					PandoraLogger.LogConfig("No configuration settings discovered. Bypassing IO and Watcher initialization.");
+					lock (InitializationLock)
+					{
+						_IsInitialized = true;
+						_IsInitializing = false;
+					}
+					return;
+				}
+
 				LoadFromFileSync();
 
 				lock (InitializationLock)
@@ -131,7 +142,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				PandoraLogger.LogConfig($"Synchronous initialization complete. {Registry.Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if (UNITY_EDITOR || UNITY_STANDALONE) && !PANDORA_DISABLE_CONFIG_WATCHER
 				StartWatching();
 #endif
 			}
@@ -191,6 +202,17 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				PandoraLogger.LogConfig($"Initializing asynchronously... Config file path: {GetConfigPath()}");
 
 				DiscoverSettings();
+				if (Registry.Settings.Count == 0)
+				{
+					PandoraLogger.LogConfig("No configuration settings discovered. Bypassing IO and Watcher initialization.");
+					lock (InitializationLock)
+					{
+						_IsInitialized = true;
+						_IsInitializing = false;
+					}
+					return;
+				}
+
 				await LoadFromFileAsync();
 
 				lock (InitializationLock)
@@ -202,7 +224,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				PandoraLogger.LogConfig($"Asynchronous initialization complete. {Registry.Settings.Count} settings loaded.");
 
 				// Automatically start watching for changes in supported environments.
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if (UNITY_EDITOR || UNITY_STANDALONE) && !PANDORA_DISABLE_CONFIG_WATCHER
 				StartWatching();
 #endif
 			}
@@ -323,6 +345,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 			else
 			{
+#if CONFIG_ALLOW_REFLECTION
 				// Fallback to full assembly scan (slow path)
 				PandoraLogger.LogConfigWarning("PandoraConfigCache not found! Falling back to slow assembly scan. Please run the Pandora Config Preprocessor before building.");
 				var assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -341,6 +364,9 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					}
 					catch (ReflectionTypeLoadException) { }
 				}
+#else
+				PandoraLogger.LogConfigWarning("PandoraConfigCache not found! Skipping config discovery. Ensure you added Configs and ran the Cache Generator.");
+#endif
 			}
 #endif
 			

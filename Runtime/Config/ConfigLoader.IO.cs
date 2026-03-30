@@ -171,7 +171,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		public static void StartWatching()
 		{
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if !PANDORA_DISABLE_CONFIG_WATCHER && (UNITY_EDITOR || UNITY_STANDALONE)
 			if (_Watcher != null) return;
 
 			try
@@ -204,7 +204,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		public static void StopWatching()
 		{
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if !PANDORA_DISABLE_CONFIG_WATCHER && (UNITY_EDITOR || UNITY_STANDALONE)
 			if (_Watcher == null) return;
 
 			_Watcher.EnableRaisingEvents = false;
