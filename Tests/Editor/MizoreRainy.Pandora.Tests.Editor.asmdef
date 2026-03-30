@@ -6,6 +6,7 @@
         "MizoreRainy.Pandora.Runtime",
         "MizoreRainy.Pandora.Runtime.Config",
         "MizoreRainy.Pandora.Editor.Config",
+        "MizoreRainy.Pandora.Editor.Build",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

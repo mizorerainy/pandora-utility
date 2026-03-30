@@ -4,6 +4,7 @@
     "references": [
         "MizoreRainy.Pandora.Runtime",
         "MizoreRainy.Pandora.Runtime.Config",
+        "MizoreRainy.Pandora.Runtime.Network.AetherLink",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
