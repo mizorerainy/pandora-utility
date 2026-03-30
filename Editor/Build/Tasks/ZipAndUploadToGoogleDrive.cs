@@ -21,6 +21,8 @@ namespace MizoreRainy.Pandora.CustomTasks
     [Serializable]
     public class ZipAndUploadToGoogleDrive : ManagedPostBuildTask
     {
+        #region Fields & Properties
+        
         [Tooltip("The ID of the target Google Drive Folder.")]
         [MizoreRainy.Pandora.Editor.Attributes.UrlButton("Open Google Drive", "https://drive.google.com/drive/folders/{0}")]
         public string GoogleDriveFolderId = "";
@@ -37,6 +39,10 @@ namespace MizoreRainy.Pandora.CustomTasks
         private static CancellationTokenSource _uploadCancellationTokenSource;
         private static float _progressValue = 0f;
         private static string _progressMessage = "";
+
+        #endregion
+
+        #region Public API
 
         public override void Execute(ManagedBuildProfile profile, string buildOutputPath)
         {
@@ -138,8 +144,12 @@ namespace MizoreRainy.Pandora.CustomTasks
                 PandoraLogger.LogBuildError($"[ZipAndUpload] Zipping Failed: {ex.Message}");
             }
         }
+        
+        #endregion
 
 #if UNITY_EDITOR
+        #region Unity Lifecycle & Initialization
+
         private static void OnEditorUpdate()
         {
             if (_isUploading)
@@ -160,7 +170,12 @@ namespace MizoreRainy.Pandora.CustomTasks
                 EditorApplication.update -= OnEditorUpdate;
             }
         }
+
+        #endregion
 #endif
+
+        #region Internal & Interface Implementations
+
 
         private async Task UploadToGoogleDriveAsync(string filePath, CancellationToken ct)
         {
@@ -351,7 +366,12 @@ namespace MizoreRainy.Pandora.CustomTasks
             }
             return bytes;
         }
+        
         #endregion
+        
+        #endregion
+
+        #region Nested Types
 
         // Custom Stream Content to report back the bytes transferred
         public class ProgressableStreamContent : HttpContent
@@ -389,5 +409,7 @@ namespace MizoreRainy.Pandora.CustomTasks
                 return true;
             }
         }
+        
+        #endregion
     }
 }

@@ -41,7 +41,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	// ReSharper disable once PartialTypeWithSinglePart
 	public partial class AetherLink : MonoBehaviour
 	{
-		#region Public API - Managed Handlers
+		#region Public API
 
 #if HAVE_CYSHARP_UNITASK
 		/// <summary>
@@ -143,9 +143,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 #endif
 
-		#endregion
 
-		#region Public API - Async Streams
 
 #if HAVE_CYSHARP_UNITASK
 		/// <summary>
@@ -206,9 +204,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 #endif
 
-		#endregion
 
-		#region Public API
 
 		/// <summary>
 		///     Initializes the link with custom settings. Must be called before starting if not using Inspector values.
@@ -276,7 +272,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Editor Simulation Helpers
+		#region Internal & Interface Implementations
 
 #if UNITY_EDITOR
 		/// <summary>

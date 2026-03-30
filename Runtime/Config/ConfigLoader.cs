@@ -34,98 +34,47 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	[DefaultExecutionOrder(-9999)]
 	public static partial class ConfigLoader
 	{
-		#region Fields
+		#region Fields & Properties
 
 		/// <summary>
-		///     The active registry holding configuration settings and parsers.
+		///     Gets or sets the active registry holding configuration settings and parsers.
 		///     Can be swapped for unit testing isolated environments.
 		/// </summary>
 		public static ConfigRegistry Registry { get; set; } = new ConfigRegistry();
 
-		/// <summary>
-		///     Indicates whether the ConfigLoader has completed its initialization process.
-		///     This field is used internally to ensure that configuration operations are only performed
-		///     after all required initialization tasks are successfully finished.
-		/// </summary>
+		// Indicates whether the ConfigLoader has completed its initialization process.
 		private static bool _IsInitialized;
 
-		/// <summary>
-		///     Tracks whether the configuration system is currently undergoing the initialization process.
-		///     Used internally to ensure initialization operations are not executed concurrently
-		///     or redundantly within the application workflow.
-		/// </summary>
+		// Tracks whether the configuration system is currently undergoing initialization.
 		private static bool _IsInitializing;
 
-		/// <summary>
-		///     Tracks the task representing the asynchronous initialization process
-		///     of the configuration system within the application.
-		///     This variable ensures that the same initialization logic can be
-		///     awaited from multiple callers without initiating concurrent initializations.
-		/// </summary>
+		// Tracks the task representing the asynchronous initialization process.
 		private static Task _InitializationTask;
 
-		/// <summary>
-		///     Serves as a synchronization mechanism used to ensure thread-safe
-		///     execution of critical sections during the initialization process
-		///     within the configuration loader.
-		/// </summary>
+		// Serves as a synchronization mechanism for thread-safe initialization.
 		private static readonly object InitializationLock = new();
 
-		/// <summary>
-		///     Holds the file path to the application's configuration file.
-		///     This variable is dynamically assigned based on the execution environment,
-		///     ensuring the configuration file is correctly located in contexts such as
-		///     the Unity Editor, standalone builds, or mobile platforms.
-		/// </summary>
+		// Holds the dynamically assigned file path to the application's configuration file.
 		private static string _ConfigFilePath;
 
-		/// <summary>
-		///     A private static variable representing a file system watcher
-		///     that observes changes to the configuration file during runtime.
-		///     This enables functionality such as live-reloading of configuration settings
-		///     whenever the file is modified.
-		/// </summary>
-		/// <remarks>
-		///     The watcher is configured to monitor specific file attributes, such as size and last write time,
-		///     and is activated in suitable runtime environments like Unity Editor or standalone applications.
-		///     It is managed internally by the ConfigLoader class and is disposed of when no longer needed.
-		/// </remarks>
+		// A file system watcher that observes changes to the configuration file during runtime.
 		private static FileSystemWatcher _Watcher;
 
-		/// <summary>
-		///     Serves as a synchronization object to manage concurrent access
-		///     to file operations within the ConfigLoader class.
-		///     This variable is used to ensure thread safety and prevent race conditions
-		///     during read and write operations on configuration files.
-		/// </summary>
+		// Serves as a synchronization object to manage concurrent access to file operations.
 		private static readonly object FileLock = new();
 
-		/// <summary>
-		///     Holds a reference to the synchronization context of the main thread.
-		///     This variable facilitates operations that require execution on the main thread,
-		///     such as UI updates or interaction with frameworks that enforce main-thread constraints.
-		/// </summary>
+		// Holds a reference to the synchronization context of the main thread.
 		private static SynchronizationContext _MainThreadContext;
 
-		/// <summary>
-		///     Denotes whether the configuration system is in the process of being reloaded.
-		///     This variable is managed internally to avoid overlapping or redundant reload operations,
-		///     ensuring synchronization, especially during configuration file monitoring and updates.
-		/// </summary>
+		// Denotes whether the configuration system is in the process of being reloaded.
 		private static volatile bool _IsReloading;
 
 		#endregion
 
-		#region Initialization
+	#region Unity Lifecycle & Initialization
 
 #if CONFIG_LOADER_AUTO_INIT
-		/// <summary>
-		///     Handles automatic initialization of the configuration system before the first scene loads.
-		///     This behavior can be disabled by including "CONFIG_LOADER_MANUAL_INIT" in the Scripting Define Symbols.
-		///     By default, synchronous initialization is used for reliability.
-		///     To enable asynchronous initialization,
-		///     include "CONFIG_LOAD_ASYNC" in the Scripting Define Symbols.
-		/// </summary>
+		// Handles automatic initialization of the configuration system before the first scene loads.
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		private static void AutoInitialize()
 		{
@@ -141,7 +90,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 
 		/// <summary>
-		///     Synchronously initializes the configuration system.
+		///     Initializes the configuration system synchronously.
 		///     Discovers and loads all available configuration settings from the configuration file,
 		///     ensuring they are ready before proceeding.
 		///     It also establishes a file watching
@@ -284,7 +233,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Indicates whether the configuration system has been successfully initialized.
+		///     Gets a value indicating whether the configuration system has been successfully initialized.
 		///     Returns true if the initialization process, involving configuration discovery,
 		///     loading, and runtime readiness, has been completed.
 		///     Otherwise, returns false.
@@ -296,7 +245,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		#region Public API
 
 		/// <summary>
-		///     Retrieves the absolute file path of the configuration file used by the system.
+		///     Gets the absolute file path of the configuration file used by the system.
 		///     The path is determined based on platform-specific directories and file naming conventions:
 		///     - In Unity Editor: Located in the project's root directory.
 		///     - In standalone builds: Placed next to the application's executable.
@@ -337,11 +286,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 
 
-		#region Settings Discovery
+		#region Internal & Interface Implementations
 
 		private static void DiscoverSettings()
 		{
 			Registry.Settings.Clear();
+			Registry.GroupOrders.Clear();
 			var processedTypes = new HashSet<Type>();
 
 #if UNITY_EDITOR
@@ -393,6 +343,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				}
 			}
 #endif
+			
+			// Sort settings by initialization and display order using a stable sort
+			var sortedSettings = System.Linq.Enumerable.ToList(System.Linq.Enumerable.OrderBy(Registry.Settings, a => a.Order));
+			Registry.Settings.Clear();
+			Registry.Settings.AddRange(sortedSettings);
 		}
 
 		private static Type GetTopmostStaticDeclaringType(Type type)
@@ -407,28 +362,23 @@ namespace MizoreRainy.Pandora.ConfigUtility
 					topmostStatic = current;
 				else
 					break;
-				
+
 				current = current.DeclaringType;
 			}
 			return topmostStatic;
 		}
 
-		/// <summary>
-		///     Scans the specified type for static, readonly fields that implement the IConfigEntry interface and
-		///     performs discovery of configuration entries.
-		///     Handles recursive processing of nested types
-		///     and groups the discovered settings under the provided group name.
-		///     Ensures each type is processed only once using the collection of processed types.
-		/// </summary>
-		/// <param name="_type">The type to scan for configuration entry fields.</param>
-		/// <param name="_groupName">The group name under which the discovered settings will be categorized.</param>
-		/// <param name="_processedTypes">
-		///     The collection of types
-		///     that have already been processed to prevent redundant scanning.
-		/// </param>
+		// Scans the specified type for static, readonly fields that implement the IConfigEntry interface and
+		// performs discovery of configuration entries.
+		// Handles recursive processing of nested types and groups the discovered settings under the provided group name.
+		// Ensures each type is processed only once using the collection of processed types.
 		private static void DiscoverSettingsInType(Type _type, string _groupName, ISet<Type> _processedTypes)
 		{
 			_processedTypes.Add(_type); // Mark this type as processed
+
+			var groupAttr = _type.GetCustomAttribute<ConfigGroupAttribute>();
+			if (groupAttr != null)
+				Registry.GroupOrders[_groupName] = groupAttr.Order;
 
 			var fields = _type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
 			foreach (var field in fields)
@@ -489,20 +439,16 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				DiscoverSettingsInType(nestedType, $"{_groupName}.{nestedType.Name}", _processedTypes);
 		}
 
-		#endregion
+#endregion
 
-		#region Utility Methods
 
-		/// <summary>
-		///     Determines whether the specified type is a primitive type, a string, or an enum.
-		/// </summary>
-		/// <param name="_type">The type to evaluate.</param>
-		/// <returns>True if the type is a primitive, a string, or an enum; otherwise, false.</returns>
+
+		// Determines whether the specified type is a primitive type, a string, or an enum.
 		private static bool IsPrimitiveOrEnum(Type _type)
 		{
 			return _type.IsPrimitive || _type == typeof(string) || _type.IsEnum;
 		}
 
-		#endregion
+
 	}
 }

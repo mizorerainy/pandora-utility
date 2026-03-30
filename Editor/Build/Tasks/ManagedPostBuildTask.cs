@@ -9,8 +9,15 @@ namespace MizoreRainy.Pandora.BuildUtility
     [Serializable]
     public abstract class ManagedPostBuildTask
     {
-        [UnityEngine.Tooltip("If unchecked, this task will be skipped during the post-build phase.")]
-        public bool IsEnabled = true;
+		#region Fields & Properties
+		
+		[UnityEngine.Tooltip("If unchecked, this task will be skipped during the post-build phase.")]
+		public bool IsEnabled = true;
+
+		#endregion
+
+		#region Public API
+
 
         /// <summary>
         /// Executes the task logic.
@@ -18,5 +25,7 @@ namespace MizoreRainy.Pandora.BuildUtility
         /// <param name="profile">The build profile that initiated the build.</param>
         /// <param name="buildOutputPath">The absolute path to the build output directory or file.</param>
         public abstract void Execute(ManagedBuildProfile profile, string buildOutputPath);
+
+        #endregion
     }
 }

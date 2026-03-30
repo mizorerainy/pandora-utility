@@ -41,20 +41,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	// ReSharper disable once PartialTypeWithSinglePart
 	public partial class AetherLink : MonoBehaviour
 	{
-		#region Core Loops & Connection Logic
+		#region Internal & Interface Implementations
 
 #if HAVE_CYSHARP_UNITASK
-		/// <summary>
-		///     Initializes the networking components and starts the execution loops for the AetherLink based
-		///     on the current configuration and mode (Master or Slave).
-		/// </summary>
-		/// <param name="_token">
-		///     The cancellation token used to manage the running tasks and handle cancellation requests.
-		/// </param>
-		/// <returns>
-		///     A UniTaskVoid that can execute asynchronously. It completes when all the initialization and
-		///     networking loops have started successfully.
-		/// </returns>
+		// Initializes the networking components and starts the execution loops for the AetherLink based
+		// on the current configuration and mode (Master or Slave).
+		// Param _token: The cancellation token used to manage the running tasks and handle cancellation requests.
+		// Returns: A UniTaskVoid that can execute asynchronously. It completes when all the initialization and
+		// networking loops have started successfully.
 		private async UniTaskVoid InitializeAndStartLoops(CancellationToken _token)
 		{
 			try
@@ -94,18 +88,12 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			await UniTask.WhenAll(tasks).SuppressCancellationThrow();
 		}
 
-		/// <summary>
-		///     Handles the TCP receive loop for processing incoming data streams.
-		///     Continuously reads data from the TCP connection, decodes packets, and processes them
-		///     until the cancellation token is triggered or the connection is closed.
-		/// </summary>
-		/// <param name="_token">
-		///     The cancellation token used to signal the termination of the receiver loop.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous operation of the receiver loop.
-		///     This completes when the loop ends due to cancellation or connection disconnection.
-		/// </returns>
+		// Handles the TCP receive loop for processing incoming data streams.
+		// Continuously reads data from the TCP connection, decodes packets, and processes them
+		// until the cancellation token is triggered or the connection is closed.
+		// Param _token: The cancellation token used to signal the termination of the receiver loop.
+		// Returns: A UniTask representing the asynchronous operation of the receiver loop.
+		// This completes when the loop ends due to cancellation or connection disconnection.
 		private async UniTask TcpReceiveLoop(CancellationToken _token)
 		{
 			var stream = _TCPConnection.GetStream();
@@ -204,17 +192,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 #endif
-		/// <summary>
-		///     Validates the integrity of a network packet by checking its structure, magic numbers,
-		///     and checksum.
-		/// </summary>
-		/// <param name="_packet">
-		///     The complete network packet as a byte array, including headers, payload,
-		///     checksum, and magic numbers.
-		/// </param>
-		/// <returns>
-		///     Returns true if the packet's structure and checksum are valid; otherwise, false.
-		/// </returns>
+		// Validates the integrity of a network packet by checking its structure, magic numbers,
+		// and checksum.
+		// Param _packet: The complete network packet as a byte array, including headers, payload,
+		// checksum, and magic numbers.
+		// Returns: Returns true if the packet's structure and checksum are valid; otherwise, false.
 		private bool ValidatePacketIntegrity(byte[] _packet, out ushort _checksum)
 		{
 			_checksum = 0;
@@ -236,14 +218,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			return receivedChecksum == calculatedChecksum;
 		}
 
-		/// <summary>
-		///     Validates whether the given TCP client connection is active and still functional.
-		/// </summary>
-		/// <param name="_client">The TCP client to validate.</param>
-		/// <returns>
-		///     True if the TCP connection is valid (connected, socket is functional, and not in a disconnected state);
-		///     otherwise, false.
-		/// </returns>
+		// Validates whether the given TCP client connection is active and still functional.
+		// Param _client: The TCP client to validate.
+		// Returns: True if the TCP connection is valid (connected, socket is functional, and not in a disconnected state);
+		// otherwise, false.
 		private bool IsConnectionValid(TcpClient _client)
 		{
 			try
@@ -261,12 +239,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 
 #if HAVE_CYSHARP_UNITASK
-		/// <summary>
-		///     Continuously listens for incoming UDP packets and processes them for the discovery mechanism.
-		///     Intended to run as a background task for the slave mode.
-		/// </summary>
-		/// <param name="_token">The cancellation token used to stop the loop gracefully.</param>
-		/// <returns>A UniTask representing the asynchronous UDP listen operation.</returns>
+		// Continuously listens for incoming UDP packets and processes them for the discovery mechanism.
+		// Intended to run as a background task for the slave mode.
+		// Param _token: The cancellation token used to stop the loop gracefully.
+		// Returns: A UniTask representing the asynchronous UDP listen operation.
 		private async UniTask UdpListenLoop(CancellationToken _token)
 		{
 			while (!_token.IsCancellationRequested)
@@ -311,12 +287,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				}
 		}
 
-		/// <summary>
-		///     Processes incoming UDP messages and performs actions based on the command received.
-		///     Handles specific UDP commands and optionally initiates connections or logs debug information.
-		/// </summary>
-		/// <param name="_command">The command identifier from the received UDP message.</param>
-		/// <param name="_remoteEndPoint">The endpoint of the remote sender sending the UDP message.</param>
+		// Processes incoming UDP messages and performs actions based on the command received.
+		// Handles specific UDP commands and optionally initiates connections or logs debug information.
+		// Param _command: The command identifier from the received UDP message.
+		// Param _remoteEndPoint: The endpoint of the remote sender sending the UDP message.
 		private void HandleUdpMessage(byte _command, IPEndPoint _remoteEndPoint)
 		{
 			if (m_Settings.DebugUdpMessages)
@@ -337,18 +311,12 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Continuously attempts to establish a TCP connection to the master node as a slave while adhering to the provided
-		///     settings.
-		///     The method ensures that the slave is persistently trying to connect, especially in scenarios where
-		///     a same-machine connection is allowed and no active connection exists.
-		/// </summary>
-		/// <param name="_token">
-		///     Token used to observe cancellation requests, allowing the connection loop to stop when requested.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous execution of the slave connection loop until the token is canceled.
-		/// </returns>
+		// Continuously attempts to establish a TCP connection to the master node as a slave while adhering to the provided
+		// settings.
+		// The method ensures that the slave is persistently trying to connect, especially in scenarios where
+		// a same-machine connection is allowed and no active connection exists.
+		// Param _token: Token used to observe cancellation requests, allowing the connection loop to stop when requested.
+		// Returns: A UniTask representing the asynchronous execution of the slave connection loop until the token is canceled.
 		private async UniTask SameMachineFallbackLoop(CancellationToken _token)
 		{
 			while (!_token.IsCancellationRequested)
@@ -359,26 +327,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Establishes a TCP connection to the specified Master IP address.
-		///     This method attempts to connect asynchronously and handles new TCP connections with success.
-		/// </summary>
-		/// <param name="_masterIp">
-		///     The IP address of the Master server to connect to.
-		/// </param>
-		/// <param name="_token">
-		///     A cancellation token used to observe cancellation requests during the connection process.
-		/// </param>
-		/// <returns>
-		///     A UniTask that represents the asynchronous operation of establishing the TCP connection.
-		/// </returns>
-		/// <exception cref="OperationCanceledException">
-		///     Thrown when the operation is canceled via the provided cancellation token.
-		/// </exception>
-		/// <exception cref="Exception">
-		///     Thrown when an error occurs while attempting to connect to the Master server, excluding cancellation.
-		///     Logs detailed connection failure information.
-		/// </exception>
+		// Establishes a TCP connection to the specified Master IP address.
+		// This method attempts to connect asynchronously and handles new TCP connections with success.
+		// Param _masterIp: The IP address of the Master server to connect to.
+		// Param _token: A cancellation token used to observe cancellation requests during the connection process.
+		// Returns: A UniTask that represents the asynchronous operation of establishing the TCP connection.
+		// Throws OperationCanceledException: Thrown when the operation is canceled via the provided cancellation token.
+		// Throws Exception: Thrown when an error occurs while attempting to connect to the Master server, excluding cancellation.
+		// Logs detailed connection failure information.
 		private async UniTask TcpConnectToMaster(IPAddress _masterIp, CancellationToken _token)
 		{
 			if (IsConnected) return;
@@ -403,16 +359,12 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Handles the disconnection of the TCP connection within AetherLink.
-		///     This method ensures proper cleanup and state updates upon a disconnection.
-		///     It increments the disconnection count, resets connection-related state,
-		///     and publishes disconnection events through both the async stream API
-		///     and Unity's Inspector UnityEvent.
-		/// </summary>
-		/// <returns>
-		///     A UniTask that completes when the disconnection handling process is finalized.
-		/// </returns>
+		// Handles the disconnection of the TCP connection within AetherLink.
+		// This method ensures proper cleanup and state updates upon a disconnection.
+		// It increments the disconnection count, resets connection-related state,
+		// and publishes disconnection events through both the async stream API
+		// and Unity's Inspector UnityEvent.
+		// Returns: A UniTask that completes when the disconnection handling process is finalized.
 		private async UniTask HandleDisconnection()
 		{
 			await UniTask.SwitchToMainThread();
@@ -433,17 +385,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			OnDisconnectedInspector?.Invoke();
 		}
 
-		/// <summary>
-		///     Handles the initialization of a new TCP connection.
-		///     Configures the client settings, sets up the connection state, and triggers
-		///     connection-related events or handlers.
-		/// </summary>
-		/// <param name="_client">
-		///     The TCPClient instance representing the newly established connection.
-		/// </param>
-		/// <param name="_token">
-		///     A CancellationToken used to handle operation cancellation during connection processing.
-		/// </param>
+		// Handles the initialization of a new TCP connection.
+		// Configures the client settings, sets up the connection state, and triggers
+		// connection-related events or handlers.
+		// Param _client: The TCPClient instance representing the newly established connection.
+		// Param _token: A CancellationToken used to handle operation cancellation during connection processing.
 		private void HandleNewTcpConnection(TcpClient _client, CancellationToken _token)
 		{
 			_TCPConnection = _client;
@@ -465,19 +411,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Executes a loop to send UDP handshake packets at regular intervals for discovery and connection initialization.
-		///     Broadcasts handshake packets to a specified port until a connection is established or the operation is canceled.
-		/// </summary>
-		/// <param name="_token">
-		///     A CancellationToken used to manage the lifetime of the loop. The loop stops when the token is canceled.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous operation of the UDP handshake broadcast loop.
-		/// </returns>
-		/// <exception cref="Exception">
-		///     Thrown if an error occurs during the operation while the cancellation token is not yet canceled.
-		/// </exception>
+		// Executes a loop to send UDP handshake packets at regular intervals for discovery and connection initialization.
+		// Broadcasts handshake packets to a specified port until a connection is established or the operation is canceled.
+		// Param _token: A CancellationToken used to manage the lifetime of the loop. The loop stops when the token is canceled.
+		// Returns: A UniTask representing the asynchronous operation of the UDP handshake broadcast loop.
+		// Throws Exception: Thrown if an error occurs during the operation while the cancellation token is not yet canceled.
 		private async UniTask UdpHandshakeBroadcastLoop(CancellationToken _token)
 		{
 			try
@@ -509,17 +447,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Continuously sends heartbeat signals to maintain a connection while the link is active.
-		///     It sends periodic messages to the remote endpoint to ensure the connection remains alive.
-		/// </summary>
-		/// <param name="_token">
-		///     A <see cref="CancellationToken" /> that monitors for cancellation requests, allowing
-		///     the loop to terminate gracefully when the operation is no longer needed.
-		/// </param>
-		/// <returns>
-		///     A <see cref="UniTask" /> representing the asynchronous heartbeat loop operation.
-		/// </returns>
+		// Continuously sends heartbeat signals to maintain a connection while the link is active.
+		// It sends periodic messages to the remote endpoint to ensure the connection remains alive.
+		// Param _token: A <see cref="CancellationToken" /> that monitors for cancellation requests, allowing
+		// the loop to terminate gracefully when the operation is no longer needed.
+		// Returns: A <see cref="UniTask" /> representing the asynchronous heartbeat loop operation.
 		private async UniTask HeartbeatLoop(CancellationToken _token)
 		{
 			while (!_token.IsCancellationRequested)
@@ -529,17 +461,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Monitors the connection by validating the time difference between heartbeats. If the time exceeds the
-		///     configured heartbeat timeout, it triggers a disconnection process.
-		///     On simulation mode, it will not trigger a disconnection process.
-		/// </summary>
-		/// <param name="_token">
-		///     A CancellationToken used to stop the loop when cancellation is requested.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous monitoring operation.
-		/// </returns>
+		// Monitors the connection by validating the time difference between heartbeats. If the time exceeds the
+		// configured heartbeat timeout, it triggers a disconnection process.
+		// On simulation mode, it will not trigger a disconnection process.
+		// Param _token: A CancellationToken used to stop the loop when cancellation is requested.
+		// Returns: A UniTask representing the asynchronous monitoring operation.
 		private async UniTask HeartbeatMonitorLoop(CancellationToken _token)
 		{
 			while (!_token.IsCancellationRequested)
@@ -562,27 +488,15 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Listens for incoming TCP connections and handles new client connections asynchronously.
-		///     This method is designed to run in a background task and continues until the provided cancellation token is
-		///     triggered.
-		/// </summary>
-		/// <param name="_token">
-		///     A cancellation token used to gracefully terminate the listening loop. When triggered, the listener will stop
-		///     accepting new connections.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous operation of the listening loop.
-		/// </returns>
-		/// <exception cref="OperationCanceledException">
-		///     Thrown when the operation is canceled via the provided cancellation token.
-		/// </exception>
-		/// <exception cref="ObjectDisposedException">
-		///     Thrown when the TCP listener is disposed while the loop is running.
-		/// </exception>
-		/// <exception cref="Exception">
-		///     Logs and stops the link if any unexpected errors occur during the listening loop.
-		/// </exception>
+		// Listens for incoming TCP connections and handles new client connections asynchronously.
+		// This method is designed to run in a background task and continues until the provided cancellation token is
+		// triggered.
+		// Param _token: A cancellation token used to gracefully terminate the listening loop. When triggered, the listener will stop
+		// accepting new connections.
+		// Returns: A UniTask representing the asynchronous operation of the listening loop.
+		// Throws OperationCanceledException: Thrown when the operation is canceled via the provided cancellation token.
+		// Throws ObjectDisposedException: Thrown when the TCP listener is disposed while the loop is running.
+		// Throws Exception: Logs and stops the link if any unexpected errors occur during the listening loop.
 		private async UniTask TcpListenLoop(CancellationToken _token)
 		{
 			try
@@ -628,16 +542,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Reads an exact number of bytes from a network stream into the specified buffer.
-		///     Continues reading until the specified number of bytes is read or the stream is closed.
-		/// </summary>
-		/// <param name="_stream">The network streams to read data from.</param>
-		/// <param name="_buffer">The buffer to store the data read from the stream.</param>
-		/// <param name="_bytesToRead">The number of bytes to read from the stream.</param>
-		/// <param name="_token">A cancellation token to observe during the operation.</param>
-		/// <returns>The total number of bytes read, which will equal the specified number unless an exception is thrown.</returns>
-		/// <exception cref="EndOfStreamException">Thrown if the connection is closed before the requested number of bytes is read.</exception>
+		// Reads an exact number of bytes from a network stream into the specified buffer.
+		// Continues reading until the specified number of bytes is read or the stream is closed.
+		// Param _stream: The network streams to read data from.
+		// Param _buffer: The buffer to store the data read from the stream.
+		// Param _bytesToRead: The number of bytes to read from the stream.
+		// Param _token: A cancellation token to observe during the operation.
+		// Returns: The total number of bytes read, which will equal the specified number unless an exception is thrown.
+		// Throws EndOfStreamException: Thrown if the connection is closed before the requested number of bytes is read.
 		private async UniTask<int> ReadExactlyAsync(NetworkStream _stream, byte[] _buffer, int _bytesToRead,
 			CancellationToken _token)
 		{

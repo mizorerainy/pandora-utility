@@ -11,11 +11,12 @@ using UnityEngine;
 namespace MizoreRainy.Pandora.ConfigUtility.Parsers
 {
 	/// <summary>
-	///     A native built-in parser that provides support for T[] arrays within Pandora configuration.
+	///     Represents a native built-in parser that provides support for T[] arrays within Pandora configuration.
 	///     Capable of parsing both comma-separated inline strings `[1, 2, 3]` and native YAML sequence blocks.
 	/// </summary>
 	public class ArrayConfigParser : IConfigValueParser
 	{
+		#region Public API
 		public bool CanParse(Type _type)
 		{
 			return _type.IsArray && _type.GetArrayRank() == 1;
@@ -124,6 +125,10 @@ namespace MizoreRainy.Pandora.ConfigUtility.Parsers
 			return "[" + string.Join(", ", elements) + "]";
 		}
 
+		#endregion
+
+		#region Internal & Interface Implementations
+
 		private List<string> SplitRespectingQuotes(string text, char separator)
 		{
 			var result = new List<string>();
@@ -147,5 +152,7 @@ namespace MizoreRainy.Pandora.ConfigUtility.Parsers
 			result.Add(text.Substring(start));
 			return result;
 		}
+
+		#endregion
 	}
 }

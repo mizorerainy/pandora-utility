@@ -41,7 +41,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	// ReSharper disable once PartialTypeWithSinglePart
 	public partial class AetherLink : MonoBehaviour
 	{
-		#region Data Sending
+		#region Public API
 
 		/// <summary>
 		///     Sends a zero-allocation generic struct by converting it directly to bytes. (High Performance)
@@ -95,32 +95,20 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 
 
+		#endregion
+
+		#region Internal & Interface Implementations
+
 #if HAVE_CYSHARP_UNITASK
 
-		/// <summary>
-		///     Sends a data packet asynchronously using the internal TCP connection.
-		/// </summary>
-		/// <param name="_header">
-		///     The header value for the packet, representing its type or purpose.
-		/// </param>
-		/// <param name="_payload">
-		///     The byte array containing the payload data to be sent over the network.
-		/// </param>
-		/// <returns>
-		///     A UniTask representing the asynchronous operation. Completes when the data has been sent or in case of an error.
-		/// </returns>
-		/// <exception cref="ArgumentException">
-		///     Thrown when the payload or packet data is invalid.
-		/// </exception>
-		/// <exception cref="IOException">
-		///     Thrown when an I/O error occurs during the network operation.
-		/// </exception>
-		/// <exception cref="ObjectDisposedException">
-		///     Thrown when attempting to send data using a disposed connection.
-		/// </exception>
-		/// <exception cref="Exception">
-		///     Thrown when an unexpected error occurs during the operation, allowing further error handling by the caller.
-		/// </exception>
+		// Sends a data packet asynchronously using the internal TCP connection.
+		// Param _header: The header value for the packet, representing its type or purpose.
+		// Param _payload: The byte array containing the payload data to be sent over the network.
+		// Returns: A UniTask representing the asynchronous operation. Completes when the data has been sent or in case of an error.
+		// Throws ArgumentException: Thrown when the payload or packet data is invalid.
+		// Throws IOException: Thrown when an I/O error occurs during the network operation.
+		// Throws ObjectDisposedException: Thrown when attempting to send data using a disposed connection.
+		// Throws Exception: Thrown when an unexpected error occurs during the operation, allowing further error handling by the caller.
 		private async UniTask SendDataInternalAsync(ushort _header, byte[] _payload)
 		{
 			if (!IsConnected)
@@ -188,18 +176,14 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		}
 #endif
 
-		#endregion
 
-		#region Packet Creation
 
-		/// <summary>
-		///     Creates a TCP packet with proper framing and integrity checking.
-		///     Packet format: [MAGIC_START][length][header][payload][checksum][MAGIC_END]
-		/// </summary>
-		/// <param name="_header">Header identifier for the packet</param>
-		/// <param name="_payload">Payload data to include in the packet</param>
-		/// <returns>Complete TCP packet ready for transmission</returns>
-		/// <exception cref="ArgumentException">Thrown when payload exceeds maximum size</exception>
+		// Creates a TCP packet with proper framing and integrity checking.
+		// Packet format: [MAGIC_START][length][header][payload][checksum][MAGIC_END]
+		// Param _header: Header identifier for the packet
+		// Param _payload: Payload data to include in the packet
+		// Returns: Complete TCP packet ready for transmission
+		// Throws ArgumentException: Thrown when payload exceeds maximum size
 		private byte[] CreateTcpPacket(ushort _header, byte[] _payload)
 		{
 			_payload ??= Array.Empty<byte>();
@@ -236,9 +220,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			return packet;
 		}
 
-		/// <summary>
-		///     Calculates a robust Fletcher-16 checksum for a specified segment of a byte array, detecting swapped bytes.
-		/// </summary>
+		// Calculates a robust Fletcher-16 checksum for a specified segment of a byte array, detecting swapped bytes.
 		private ushort CalculateFletcher16(byte[] _data, int _offset, int _length)
 		{
 			ushort sum1 = 0;
@@ -253,16 +235,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			return (ushort)((sum2 << 8) | sum1);
 		}
 
-		/// <summary>
-		///     Creates the UDP packet with a specified command and includes the unique instance ID within the packet.
-		/// </summary>
-		/// <param name="_command">
-		///     The command identifier to be placed as the first byte of the UDP packet.
-		/// </param>
-		/// <returns>
-		///     A byte array representing the UDP packet with a predefined size, where the first byte is the command,
-		///     and the later bytes include the GUID of the current instance.
-		/// </returns>
+		// Creates the UDP packet with a specified command and includes the unique instance ID within the packet.
+		// Param _command: The command identifier to be placed as the first byte of the UDP packet.
+		// Returns: A byte array representing the UDP packet with a predefined size, where the first byte is the command,
+		// and the later bytes include the GUID of the current instance.
 		private byte[] CreateUdpPacket(byte _command)
 		{
 			var packet = new byte[_UDP_PACKET_SIZE];

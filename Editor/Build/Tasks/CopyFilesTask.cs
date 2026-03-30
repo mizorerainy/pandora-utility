@@ -8,6 +8,8 @@ namespace MizoreRainy.Pandora.BuildUtility
     [Serializable]
     public class CopyFilesTask : ManagedPostBuildTask
     {
+        #region Fields & Properties
+        
         [Tooltip("Source folder or file. Can be absolute or relative to the project root (e.g., '../TestFolder').")]
         [MizoreRainy.Pandora.Editor.Attributes.PathSelector]
         public string SourcePath = "";
@@ -18,6 +20,10 @@ namespace MizoreRainy.Pandora.BuildUtility
         [Tooltip("Destination directory relative to the build root folder. Leave empty to copy directly into the build root.")]
         [MizoreRainy.Pandora.Editor.Attributes.FolderSelector]
         public string DestinationRelativePath = "";
+
+        #endregion
+
+        #region Public API
 
         public override void Execute(ManagedBuildProfile profile, string buildOutputPath)
         {
@@ -67,6 +73,10 @@ namespace MizoreRainy.Pandora.BuildUtility
             }
         }
 
+        #endregion
+
+        #region Internal & Interface Implementations
+
         private void CopyDirectory(string sourceDir, string destDir)
         {
             var dir = new DirectoryInfo(sourceDir);
@@ -86,5 +96,7 @@ namespace MizoreRainy.Pandora.BuildUtility
                 CopyDirectory(subDir.FullName, newDestDir);
             }
         }
+        
+        #endregion
     }
 }

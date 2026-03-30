@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MizoreRainy.Pandora.ConfigUtility
 {
     /// <summary>
-    ///     A ScriptableObject cache that stores the fully qualified assembly names of all classes 
+    ///     Represents a ScriptableObject cache that stores the fully qualified assembly names of all classes 
     ///     containing configuration settings. Used to avoid expensive reflection scanning at runtime.
     ///     This is automatically generated during the pre-build process.
     /// </summary>

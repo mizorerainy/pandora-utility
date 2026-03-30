@@ -5,12 +5,13 @@ using System.Collections.Generic;
 
 namespace MizoreRainy.Pandora.ConfigUtility.Editor
 {
-    /// <summary>
-    /// Validates all ConfigAttribute fields to guarantee type safety in the Unity Editor.
-    /// Throws warnings when unsupported complex types are configured without known parsers.
-    /// </summary>
-    public static class ConfigValidator
-    {
+	/// <summary>
+	/// Provides validation for all ConfigAttribute fields to guarantee type safety in the Unity Editor.
+	/// Throws warnings when unsupported complex types are configured without known parsers.
+	/// </summary>
+	public static class ConfigValidator
+	{
+		#region Unity Lifecycle & Initialization
         [InitializeOnLoadMethod]
         public static void ValidateConfigTypes()
         {
@@ -57,6 +58,10 @@ namespace MizoreRainy.Pandora.ConfigUtility.Editor
             }
         }
 
+		#endregion
+
+		#region Internal & Interface Implementations
+
         private static bool IsSupportedType(Type type, List<IConfigValueParser> parsers)
         {
             if (type.IsPrimitive || type.IsEnum || type == typeof(string)) return true;
@@ -68,5 +73,7 @@ namespace MizoreRainy.Pandora.ConfigUtility.Editor
 
             return false;
         }
+
+		#endregion
     }
 }

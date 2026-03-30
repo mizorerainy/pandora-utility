@@ -15,6 +15,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 	[Serializable]
 	public class ManagedBuildProfile
 	{
+		#region Fields & Properties
+		
 		[HideInInspector]
 		public string ID = Guid.NewGuid().ToString();
 
@@ -35,6 +37,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 		[Tooltip("List of post-build actions to execute after a successful build. Tasks run in order.")]
 		[SerializeReference]
 		public List<ManagedPostBuildTask> PostBuildTasks = new();
+		
+		#endregion
 	}
 
 	/// <summary>
@@ -44,6 +48,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 	[CreateAssetMenu(fileName = "ManagedBuildSettings", menuName = "Pandora/Managed Build Settings", order = 2)]
 	public class BuildSettingsData : ScriptableObject
 	{
+		#region Fields & Properties
+		
 		[Header("Global Build Settings")]
 		[Tooltip("The root folder where all builds will be saved.")]
 		public string BuildFolderPath = "Builds";
@@ -51,5 +57,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 		[Header("Managed Profiles")]
 		[Tooltip("The list of profiles that add one-click build functionality to Unity's Build Profiles.")]
 		public List<ManagedBuildProfile> ManagedProfiles = new();
+		
+		#endregion
 	}
 }

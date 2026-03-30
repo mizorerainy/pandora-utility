@@ -8,6 +8,8 @@ namespace MizoreRainy.Pandora.BuildUtility
 {
     public class PostBuildTaskCreator
     {
+        #region Internal & Interface Implementations
+        
         [MenuItem("Assets/Create/Pandora/Post Build Task Script", false, 80)]
         public static void CreatePostBuildTaskScript()
         {
@@ -19,10 +21,14 @@ namespace MizoreRainy.Pandora.BuildUtility
                 icon,
                 null);
         }
+        
+        #endregion
     }
 
     class DoCreatePostBuildTaskScript : EndNameEditAction
     {
+        #region Internal & Interface Implementations
+
         public override void Action(int instanceId, string pathName, string resourceFile)
         {
             string className = Path.GetFileNameWithoutExtension(pathName);
@@ -69,5 +75,7 @@ namespace MizoreRainy.Pandora.CustomTasks
             var asset = AssetDatabase.LoadAssetAtPath<MonoScript>(pathName);
             ProjectWindowUtil.ShowCreatedAsset(asset);
         }
+        
+        #endregion
     }
 }

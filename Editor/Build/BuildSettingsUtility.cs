@@ -24,7 +24,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 	/// </summary>
 	public partial class BuildSettingsUtility : EditorWindow
 	{
-		#region Fields
+		#region Fields & Properties
 
 		/// <summary>
 		/// The relative file path within the Unity project where the Managed Build Settings asset
@@ -104,7 +104,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 		#endregion
 
-		#region Menu Item
+		#region Public API
 
 		/// <summary>
 		/// Displays the Build Settings Utility window in the Unity Editor.
@@ -126,7 +126,7 @@ namespace MizoreRainy.Pandora.BuildUtility
 
 		#endregion
 
-		#region Unity Lifecycle
+		#region Unity Lifecycle & Initialization
 
 		/// <summary>
 		/// Unity callback method that is invoked when the script instance is enabled.

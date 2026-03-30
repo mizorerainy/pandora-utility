@@ -46,6 +46,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		string BackgroundColorHex { get; }
 
 		/// <summary>
+		///     Gets the explicit configuration initialization order.
+		/// </summary>
+		int Order { get; }
+
+		/// <summary>
 		///     Gets the type of the value stored in the configuration entry.
 		/// </summary>
 		Type ValueType { get; }
@@ -57,7 +62,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		void SetValueFromString(string _rawValue);
 
 		/// <summary>
-		///     Retrieves the value of the configuration entry as a string.
+		///     Gets the value of the configuration entry as a string.
 		/// </summary>
 		/// <returns>The string representation of the configuration entry's value.</returns>
 		string GetValueAsString();
@@ -76,37 +81,17 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	/// <typeparam name="T">The type of the value held by the configuration entry.</typeparam>
 	public class ConfigEntry<T> : IConfigEntry
 	{
-		#region Nested Types
-
-		/// <summary>
-		///     Represents a subscription to a configuration entry's value change event.
-		///     This struct implements IDisposable to allow for easy unsubscribing,
-		///     preventing memory leaks.
-		/// </summary>
-		private readonly struct Subscription : IDisposable
-		{
-			private readonly ConfigEntry<T> _Owner;
-			private readonly Action<T> _Handler;
-
-			public Subscription(ConfigEntry<T> _owner, Action<T> _handler)
-			{
-				_Owner = _owner;
-				_Handler = _handler;
-			}
-
-			public void Dispose()
-			{
-				_Owner.OnChangeEvent -= _Handler;
-			}
-		}
-
-		#endregion
-
 		#region Fields
+
 
 		private T _Value;
 		private readonly T _DefaultValue;
 		private readonly TaskCompletionSource<T> _InitializationTcs = new();
+
+		#endregion
+
+		#region Events
+
 		private event Action<T> OnChangeEvent;
 
 		#endregion
@@ -134,6 +119,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		public string BackgroundColorHex { get; }
 
 		/// <summary>
+		///     Gets the explicit configuration initialization order.
+		/// </summary>
+		public int Order { get; }
+
+		/// <summary>
 		///     Gets the type of the value for the configuration entry.
 		/// </summary>
 		public Type ValueType => typeof(T);
@@ -156,7 +146,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Initialization
+		#region Unity Lifecycle / Initialization
 
 		/// <summary>
 		///     Initializes a new instance of the ConfigEntry class with the specified attribute and group name.
@@ -167,9 +157,11 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		public ConfigEntry(ConfigAttribute _attribute, string _groupName)
 		{
 			Key = _attribute.Key;
+			GroupName = _groupName;
+
+			Order = _attribute.Order;
 			Description = _attribute.Description;
 			BackgroundColorHex = _attribute.BackgroundColorHex;
-			GroupName = _groupName;
 
 			try
 			{
@@ -224,7 +216,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Interface Implementation
+		#region Internal & Interface Implementations
 
 		/// <summary>
 		///     Sets the value of the entry from a raw string, using registered or default parsers.
@@ -274,6 +266,32 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		void IConfigEntry.SetToDefault()
 		{
 			Value = _DefaultValue;
+		}
+
+		#endregion
+
+		#region Nested Types
+
+		/// <summary>
+		///     Represents a subscription to a configuration entry's value change event.
+		///     This struct implements IDisposable to allow for easy unsubscribing,
+		///     preventing memory leaks.
+		/// </summary>
+		private readonly struct Subscription : IDisposable
+		{
+			private readonly ConfigEntry<T> _Owner;
+			private readonly Action<T> _Handler;
+
+			public Subscription(ConfigEntry<T> _owner, Action<T> _handler)
+			{
+				_Owner = _owner;
+				_Handler = _handler;
+			}
+
+			public void Dispose()
+			{
+				_Owner.OnChangeEvent -= _Handler;
+			}
 		}
 
 		#endregion

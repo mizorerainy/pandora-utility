@@ -101,13 +101,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
-			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => Registry.GroupOrders.TryGetValue(_g.Key, out var _order) ? _order : 0).ThenBy(_g => _g.Key);
 			foreach (var group in groupedSettings)
 			{
 				sb.AppendLine("\n#==================================================");
 				sb.AppendLine($"# :: {group.Key} Settings");
 				sb.AppendLine("#==================================================");
-				foreach (var setting in group.OrderBy(_s => _s.Key))
+				foreach (var setting in group)
 				{
 					if (!string.IsNullOrEmpty(setting.Description)) sb.AppendLine($"# {setting.Description}");
 					sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
@@ -139,13 +139,13 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
-			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => _g.Key);
+			var groupedSettings = Registry.Settings.GroupBy(_s => _s.GroupName).OrderBy(_g => Registry.GroupOrders.TryGetValue(_g.Key, out var _order) ? _order : 0).ThenBy(_g => _g.Key);
 			foreach (var group in groupedSettings)
 			{
 				sb.AppendLine("\n#==================================================");
 				sb.AppendLine($"# :: {group.Key} Settings");
 				sb.AppendLine("#==================================================");
-				foreach (var setting in group.OrderBy(_s => _s.Key))
+				foreach (var setting in group)
 				{
 					if (!string.IsNullOrEmpty(setting.Description)) sb.AppendLine($"# {setting.Description}");
 					sb.AppendLine($"{setting.Key}={setting.GetValueAsString()}");
