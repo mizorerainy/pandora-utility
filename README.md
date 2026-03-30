@@ -61,7 +61,7 @@ await foreach(var packet in AetherLink.Instance.OnDataReceived())
 
 ## Features Overview
 
-- **🔧 Configuration System**: Dual Format Support (INI/YAML), Automatic Discovery, Live Reloading, Type Safety, Custom Parsers.
+- **🔧 Configuration System**: Dual Format Support (INI/YAML), Automatic Discovery, Live Reloading, Zero-Config Optimization, Type Safety, Custom Parsers.
 - **🏗️ Build Utility**: Automated Build Pipeline, Platform Management, Build Configurations, Post-Build Actions.
 - **🌐 Network Features (AetherLink)**: Cross-Platform Networking (UDP/TCP), Master-Slave Architecture, Real-time Communication, Auto-Discovery, Serialization System.
 
