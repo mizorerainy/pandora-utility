@@ -26,7 +26,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 	/// </summary>
 	public partial class ConfigEditorWindow : EditorWindow
 	{
-		#region Fields
+		#region Fields & Properties
 
 		/// <summary>
 		///     Represents the root node in the hierarchical tree of configuration settings
@@ -59,9 +59,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		/// </remarks>
 		private bool _IsAnyFieldInvalid;
 
-		/// <summary>
-		///     Stores the current search query to filter the configuration settings.
-		/// </summary>
+		// Stores the current search query to filter the configuration settings.
 		private string _SearchQuery = "";
 
 		private enum SearchScope { Key, Value, Both }
@@ -83,7 +81,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 		#endregion
 
-		#region Utility Methods
+		#region Internal & Interface Implementations
 
 		private ConfigNode FindNodeByPath(string path, ConfigNode root)
 		{
@@ -119,13 +117,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 		#endregion
 
-		#region Unity Lifecycle
+		#region Unity Lifecycle & Initialization
 
-		/// <summary>
-		///     Called when the editor window is enabled.
-		///     Initializes or refreshes the configuration settings to ensure
-		///     that the editor displays the most up-to-date information.
-		/// </summary>
+		// Called when the editor window is enabled. Initializes or refreshes the configuration settings.
 		private void OnEnable()
 		{
 			RefreshSettings();
@@ -133,15 +127,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 		#endregion
 
-		#region Domain Logic
+		#region Internal & Interface Implementations
 
-		/// <summary>
-		///     Reloads and reorganizes the configuration settings into a hierarchical structure.
-		///     This process retrieves the current configuration state and updates the visual representation
-		///     within the editor.
-		///     If the configuration information cannot be found or loaded, an error
-		///     message is logged and the settings display is disabled.
-		/// </summary>
+		// Reloads and reorganizes the configuration settings into a hierarchical structure.
 		private void RefreshSettings()
 		{
 			ConfigLoader.EnsureInitialized();
@@ -162,10 +150,16 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 				var pathParts = setting.GroupName.Split('.');
 				var currentNode = _RootNode;
 
+				var currentPath = string.Empty;
+
 				foreach (var part in pathParts)
 				{
+					currentPath = string.IsNullOrEmpty(currentPath) ? part : $"{currentPath}.{part}";
 					if (!currentNode.Children.ContainsKey(part))
-						currentNode.Children[part] = new ConfigNode { Name = part };
+					{
+						var order = ConfigLoader.Registry.GroupOrders.TryGetValue(currentPath, out var o) ? o : 0;
+						currentNode.Children[part] = new ConfigNode { Name = part, Order = order };
+					}
 					currentNode = currentNode.Children[part];
 				}
 
@@ -193,14 +187,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		}
 
 
-		/// <summary>
-		///     Saves the current configuration changes asynchronously
-		///     and displays a success notification upon completion.
-		/// </summary>
-		/// <remarks>
-		///     This method clears the current GUI control focus and attempts to save the updated configuration.
-		///     Any exceptions during the saving process are silently ignored.
-		/// </remarks>
+		// Saves the current configuration changes asynchronously and notifies upon completion.
 		private async void SaveChangesAndNotify()
 		{
 			try
@@ -214,11 +201,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 		}
 
-		/// <summary>
-		///     Resets all configuration settings to their default values
-		///     and updates the editor UI to reflect the changes.
-		///     Displays a notification dialog upon successful execution.
-		/// </summary>
+		// Resets all configuration settings to their default values and updates the editor UI.
 		private async void ResetToDefaultsAndNotify()
 		{
 			try
@@ -235,11 +218,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 		}
 
-		/// <summary>
-		///     Discards all unsaved configuration changes in the editor,
-		///     reloads the settings directly from the configuration file,
-		///     and updates the editor UI to reflect the restored values.
-		/// </summary>
+		// Discards all unsaved configuration changes in the editor and reloads from file.
 		private async void DiscardChangesAndNotify()
 		{
 			try

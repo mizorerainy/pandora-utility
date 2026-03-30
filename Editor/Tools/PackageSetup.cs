@@ -56,6 +56,12 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
 		private bool _ConfigLoaderAsyncInit;
 
+		private const string _CONFIG_DISABLE_WATCHER_KEY = "Pandora.ConfigLoader.DisableWatcherEnabled";
+		private bool _DisableConfigWatcher;
+
+		private const string _CONFIG_ALLOW_REFLECTION_KEY = "Pandora.ConfigLoader.AllowReflection";
+		private bool _AllowRuntimeReflection;
+
 		/// <summary>
 		///     Represents the editor preference key used to store and retrieve
 		///     whether the YAML format is enabled for configuration files in the Pandora package.
@@ -93,6 +99,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			// Load saved settings
 			_ConfigLoaderAutoInit = EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false);
 			_ConfigLoaderAsyncInit = EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false);
+			_DisableConfigWatcher = EditorPrefs.GetBool(_CONFIG_DISABLE_WATCHER_KEY, false);
+			_AllowRuntimeReflection = EditorPrefs.GetBool(_CONFIG_ALLOW_REFLECTION_KEY, false);
 			_UseYaml = EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false);
 
 			CheckYamlPackageStateAsync();
@@ -180,6 +188,38 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				AssetDatabase.Refresh();
 			}
 			EditorGUI.EndDisabledGroup();
+
+			EditorGUILayout.Space(5);
+
+			EditorGUI.BeginChangeCheck();
+			_DisableConfigWatcher = EditorGUILayout.Toggle(
+				new GUIContent("Disable Config Watcher",
+					"If enabled, the ConfigLoader will not create a FileSystemWatcher. Useful to save performance if no runtime config editing is needed."),
+				_DisableConfigWatcher);
+			if (EditorGUI.EndChangeCheck())
+			{
+				EditorPrefs.SetBool(_CONFIG_DISABLE_WATCHER_KEY, _DisableConfigWatcher);
+				PackageSetup.UpdateScriptingDefines();
+				Debug.Log($"Disable Config Watcher set to: {_DisableConfigWatcher}");
+				AssetDatabase.Refresh();
+			}
+
+			EditorGUI.BeginChangeCheck();
+			_AllowRuntimeReflection = EditorGUILayout.Toggle(
+				new GUIContent("Allow Runtime Reflection (Slow)",
+					"If enabled, ConfigLoader will use reflection to discover configs if the Cache is missing at runtime. Otherwise, it will skip discovery."),
+				_AllowRuntimeReflection);
+			if (EditorGUI.EndChangeCheck())
+			{
+				EditorPrefs.SetBool(_CONFIG_ALLOW_REFLECTION_KEY, _AllowRuntimeReflection);
+				PackageSetup.UpdateScriptingDefines();
+				Debug.Log($"Allow Runtime Reflection set to: {_AllowRuntimeReflection}");
+				AssetDatabase.Refresh();
+			}
+			
+			EditorGUILayout.HelpBox(
+				"File Watcher automatically reloads config when the file changes. Disable it to save thread resources. Runtime Reflection is slow and should generally be disabled; use 'Pandora/Config/Generate Config Cache' instead.",
+				MessageType.Info);
 
 			EditorGUILayout.EndVertical();
 			EditorGUILayout.Space(10);
@@ -317,6 +357,12 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
 		private const string _CONFIG_LOADER_ASYNC_SYMBOL = "CONFIG_LOAD_ASYNC";
 
+		private const string _CONFIG_DISABLE_WATCHER_KEY = "Pandora.ConfigLoader.DisableWatcherEnabled";
+		private const string _CONFIG_DISABLE_WATCHER_SYMBOL = "PANDORA_DISABLE_CONFIG_WATCHER";
+
+		private const string _CONFIG_ALLOW_REFLECTION_KEY = "Pandora.ConfigLoader.AllowReflection";
+		private const string _CONFIG_ALLOW_REFLECTION_SYMBOL = "CONFIG_ALLOW_REFLECTION";
+
 		/// <summary>
 		///     Specifies the EditorPrefs key used to determine whether YAML-based configuration loading
 		///     is enabled in the Pandora ConfigLoader system.
@@ -448,6 +494,10 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false) && EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false));
 			definesChanged |= SetDefine(ref definesList, _CONFIG_USE_YAML_SYMBOL,
 				EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false));
+			definesChanged |= SetDefine(ref definesList, _CONFIG_DISABLE_WATCHER_SYMBOL,
+				EditorPrefs.GetBool(_CONFIG_DISABLE_WATCHER_KEY, false));
+			definesChanged |= SetDefine(ref definesList, _CONFIG_ALLOW_REFLECTION_SYMBOL,
+				EditorPrefs.GetBool(_CONFIG_ALLOW_REFLECTION_KEY, false));
 
 			if (definesChanged)
 			{

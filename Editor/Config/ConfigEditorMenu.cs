@@ -1,4 +1,3 @@
-using MizoreRainy.Pandora;
 // =================================================================================
 // File: ConfigEditorMenu.cs
 // Author: MizoreRainy
@@ -8,6 +7,8 @@ using MizoreRainy.Pandora;
 
 #if UNITY_EDITOR
 
+using MizoreRainy.Pandora;
+
 using MizoreRainy.Pandora.ConfigUtility;
 using Unity.CodeEditor;
 using UnityEditor;
@@ -16,13 +17,14 @@ using UnityEngine;
 // ReSharper disable once CheckNamespace
 namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 {
+	/// <summary>
+	/// Provides Unity Editor menu items for configuration file management.
+	/// </summary>
 	public static class ConfigEditorMenu
 	{
-		#region Editor Menu Items
+		#region Internal & Interface Implementations
 
-		/// <summary>
-		/// Opens the config.ini file in the default external script editor.
-		/// </summary>
+		// Opens the config.ini file in the default external script editor.
 		[MenuItem("Pandora/Config/Open Config File", priority = 110)]
 		private static void OpenConfigFile()
 		{
@@ -40,9 +42,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(path, 1);
 		}
 
-		/// <summary>
-		/// Forces a reload of all settings from the config.ini file.
-		/// </summary>
+		// Forces a reload of all settings from the config.ini file.
 		[MenuItem("Pandora/Config/Reload Settings from File", priority = 111)]
 		private static async void ReloadSettingsFromFile()
 		{
@@ -52,9 +52,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			PandoraLogger.LogConfig("Reload complete.");
 		}
 
-		/// <summary>
-		/// Resets the config.ini file to the default values defined in the code.
-		/// </summary>
+		// Resets the config.ini file to the default values defined in the code.
 		[MenuItem("Pandora/Config/Reset Config to Defaults", priority = 112)]
 		private static async void ResetConfigToDefaults()
 		{

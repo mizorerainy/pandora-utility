@@ -33,20 +33,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	/// </summary>
 	public static partial class ConfigLoader
 	{
-		#region Public API
-
-		#region YAML Processing
+		#region Internal & Interface Implementations
 #if HAVE_VYAML
-		/// <summary>
-		///     Loads configuration settings synchronously from a YAML file located at the specified path.
-		///     This method uses the YAML serializer to read and parse the configuration,
-		///     then applies the parsed values to the registered settings.
-		///     If an error occurs during the process,
-		///     default values are applied to the settings.
-		/// </summary>
-		/// <param name="_path">
-		///     The file path of the YAML configuration file to be loaded.
-		/// </param>
+		// Loads configuration settings synchronously from a YAML file.
+		// If an error occurs during the process, default values are applied.
 		private static void LoadFromYamlSync(string _path)
 		{
 			Dictionary<string, object> yamlData;
@@ -78,27 +68,14 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 		}
 
-		/// <summary>
-		///     Asynchronously loads configuration settings from a YAML file.
-		/// </summary>
-		/// <param name="_path">The path to the YAML configuration file to be loaded.</param>
-		/// <returns>A task representing the asynchronous operation.</returns>
+		// Asynchronously loads configuration settings from a YAML file.
 		private static Task LoadFromYamlAsync(string _path)
 		{
 			LoadFromYamlSync(_path);
 			return Task.CompletedTask;
 		}
 
-		/// <summary>
-		///     Saves the current configuration settings to a YAML file synchronously.
-		///     This method uses the specified file path to write configuration data
-		///     in YAML format with comments preserved.
-		///     Thread-safety is ensured to prevent concurrent file access issues.
-		/// </summary>
-		/// <param name="_path">
-		///     The full file path where the YAML configuration file will be saved.
-		///     Must be a valid writable file path.
-		/// </param>
+		// Saves the current configuration settings to a YAML file synchronously.
 		private static void SaveToYamlSync(string _path)
 		{
 			try
@@ -116,12 +93,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 		}
 
-		/// <summary>
-		///     Saves the current application configuration settings to a YAML file asynchronously.
-		///     Preserves comments from the configuration attribute properties.
-		/// </summary>
-		/// <param name="_path">The file path where the YAML configuration will be saved.</param>
-		/// <returns>A task representing the asynchronous save operation.</returns>
+		// Saves the current application configuration settings to a YAML file asynchronously.
 		private static async Task SaveToYamlAsync(string _path)
 		{
 			try
@@ -142,18 +114,18 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 		}
 
-		/// <summary>
-		///     Generates a YAML formatted string containing all configuration settings.
-		///     Organizes settings hierarchically based on their group names and injects
-		///     setting descriptions as YAML comments.
-		/// </summary>
-		/// <returns>A YAML formatted string.</returns>
+		// Generates a YAML formatted string containing all configuration settings.
+		// Organizes settings hierarchically based on their group names and injects descriptions as comments.
 		private static string GenerateYamlString()
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine($"# Last saved: {DateTime.Now}");
 
-			var topLevelGroups = Registry.Settings.Select(_s => _s.GroupName.Split('.')[0]).Distinct().OrderBy(_g => _g);
+			var topLevelGroups = Registry.Settings
+				.Select(_s => _s.GroupName.Split('.')[0])
+				.Distinct()
+				.OrderBy(_g => Registry.GroupOrders.TryGetValue(_g, out var _order) ? _order : 0)
+				.ThenBy(_g => _g);
 
 			foreach (var topLevelGroup in topLevelGroups)
 			{
@@ -167,18 +139,12 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			return sb.ToString();
 		}
 
-		/// <summary>
-		///     Recursively builds a hierarchical representation of configuration settings
-		///     by appending structured text to the StringBuilder.
-		/// </summary>
-		/// <param name="_sb">The StringBuilder to write the YAML content to.</param>
-		/// <param name="_currentPath">The current group path being processed.</param>
-		/// <param name="_indentLevel">The current indentation level of the node.</param>
+		// Recursively builds a hierarchical representation of configuration settings.
 		private static void BuildYamlNode(StringBuilder _sb, string _currentPath, int _indentLevel)
 		{
 			string indent = new string(' ', _indentLevel * 2);
 
-			var directSettings = Registry.Settings.Where(_s => _s.GroupName == _currentPath).OrderBy(_s => _s.Key);
+			var directSettings = Registry.Settings.Where(_s => _s.GroupName == _currentPath);
 			foreach (var setting in directSettings)
 			{
 				if (!string.IsNullOrEmpty(setting.Description))
@@ -214,7 +180,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 				.Where(_s => _s.GroupName.StartsWith(_currentPath + "."))
 				.Select(_s => _s.GroupName.Substring(_currentPath.Length + 1).Split('.')[0])
 				.Distinct()
-				.OrderBy(_g => _g);
+				.OrderBy(_g => Registry.GroupOrders.TryGetValue($"{_currentPath}.{_g}", out var _order) ? _order : 0)
+				.ThenBy(_g => _g);
 
 			foreach (var childGroup in childrenGroups)
 			{
@@ -223,12 +190,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			}
 		}
 
-		/// <summary>
-		///     Formats a value to ensure valid YAML scalar representation.
-		///     Quotes the value if it contains spaces or special characters.
-		/// </summary>
-		/// <param name="_val">The raw string value.</param>
-		/// <returns>The YAML formatted scalar value.</returns>
+		// Formats a value to ensure valid YAML scalar representation. Quotes the value if it contains spaces or special characters.
 		private static string FormatYamlValue(string _val)
 		{
 			if (string.IsNullOrEmpty(_val)) return "\"\"";
@@ -252,25 +214,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 
-		/// <summary>
-		///     Flattens a nested YAML data structure into a flat dictionary using dot-separated keys.
-		///     This method recursively traverses the hierarchy of the given object and converts
-		///     any nested dictionaries into a single-layered dictionary with keys representing
-		///     the hierarchy structure.
-		/// </summary>
-		/// <param name="_yamlData">
-		///     The nested YAML data to be flattened.
-		///     Typically, this is a dictionary
-		///     or an object deserialized from a YAML structure.
-		/// </param>
-		/// <param name="_prefix">
-		///     An optional prefix that is prepended to the keys in the resulting dictionary,
-		///     representing the hierarchy path of the current level.
-		/// </param>
-		/// <returns>
-		///     A dictionary with flattened, dot-separated keys mapping to their respective values
-		///     from the provided YAML data.
-		/// </returns>
+		// Flattens a nested YAML data structure into a flat dictionary using dot-separated keys.
 		private static Dictionary<string, object> FlattenYaml(object _yamlData, string _prefix = "")
 		{
 			var result = new Dictionary<string, object>();
@@ -308,8 +252,6 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			return result;
 		}
 #endif
-
-		#endregion
 
 		#endregion
 	}

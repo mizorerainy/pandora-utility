@@ -14,18 +14,16 @@ using UnityEngine;
 namespace MizoreRainy.Pandora.ConfigUtility
 {
 	/// <summary>
-	/// Manages a collection of IDisposable subscriptions and ensures their disposal when the GameObject is destroyed.
+	/// Represents a component that manages a collection of IDisposable subscriptions and ensures their disposal when the GameObject is destroyed.
 	/// Automatically added by using the .AddTo() extension method.
 	/// </summary>
 	[AddComponentMenu("")] // Hides this component from the "Add Component" menu.
 	public class ConfigSubscriptionDisposer : MonoBehaviour
 	{
-		#region Fields
+		#region Fields & Properties
 
-		/// <summary>
-		/// A private collection of IDisposable objects managed by the ConfigSubscriptionDisposer.
-		/// Subscriptions added to this list are disposed of when the OnDestroy method is called, ensuring proper cleanup of resources.
-		/// </summary>
+		// A private collection of IDisposable objects managed by the ConfigSubscriptionDisposer.
+		// Subscriptions added to this list are disposed of when the OnDestroy method is called.
 		private readonly List<IDisposable> _Disposables = new();
 
 		#endregion
@@ -43,12 +41,9 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
-		#region Initialization
+		#region Unity Lifecycle & Initialization
 
-		/// <summary>
-		/// Handles the destruction event of the MonoBehaviour by disposing of all
-		/// attached IDisposable subscriptions and clearing the internal list.
-		/// </summary>
+		// Disposes of all attached IDisposable subscriptions and clears the internal list.
 		private void OnDestroy()
 		{
 			foreach (var disposable in _Disposables)

@@ -42,7 +42,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	// ReSharper disable once PartialTypeWithSinglePart
 	public partial class AetherLink : MonoBehaviour
 	{
-		#region Singleton Pattern
+		#region Fields & Properties
 
 		private static AetherLink _Instance;
 		private static readonly object Lock = new();
@@ -76,11 +76,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		#endregion
 
-
-
-		#region Constants
 
 		/// <summary>
 		///     Defines the operational role of the AetherLink instance.
@@ -114,9 +110,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		private static readonly byte[] MagicStartBytes = BitConverter.GetBytes(_MAGIC_START);
 		private static readonly byte[] MagicEndBytes = BitConverter.GetBytes(_MAGIC_END);
 
-		#endregion
 
-		#region Properties
 
 		/// <summary>Gets a value indicating whether the link is currently running (i.e., StartLink has been called).</summary>
 		public bool IsRunning { get; private set; }
@@ -147,7 +141,6 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-
 		#region Events
 
 		/// <summary>Fired when a TCP connection is successfully established. Use this for both Inspector and code subscriptions.</summary>
@@ -164,9 +157,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-
-
-		#region Fields
+		#region Fields & Properties (Internal)
 
 		[HideInInspector] public bool IsConfigured;
 
@@ -201,7 +192,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Unity Lifecycle
+		#region Unity Lifecycle & Initialization
 
 #if HAVE_CYSHARP_UNITASK
 		private void Awake()
@@ -236,10 +227,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			DisposeResources();
 		}
 
-		/// <summary>
-		///     Handles application pausing to optionally stop and resume the link.
-		/// </summary>
-		/// <param name="_pauseStatus">True if the application is pausing, false if resuming.</param>
+		// Handles application pausing to optionally stop and resume the link.
 		private void OnApplicationPause(bool _pauseStatus)
 		{
 			if (!m_Settings.StopOnPause) return;
@@ -257,12 +245,9 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
+		#region Internal & Interface Implementations
 
-		#region Resource Management
-
-		/// <summary>
-		///     Safely closes and disposes all active network resources.
-		/// </summary>
+		// Safely closes and disposes all active network resources.
 		private void CleanupNetworkResources()
 		{
 			try
@@ -295,9 +280,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 			}
 		}
 
-		/// <summary>
-		///     Final resource disposal, called when the component is destroyed.
-		/// </summary>
+		// Final resource disposal, called when the component is destroyed.
 		private void DisposeResources()
 		{
 			lock (_DisposeLock)

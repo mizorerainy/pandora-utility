@@ -17,7 +17,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	public interface IConfigValueParser
 	{
 		/// <summary>
-		/// Checks if this parser can handle the specified type.
+		/// Determines whether this parser can handle the specified type.
 		/// </summary>
 		/// <param name="_type">The type to check against the parser capabilities.</param>
 		/// <returns>True if the parser can handle the specified type; otherwise, false.</returns>

@@ -9,11 +9,13 @@ using System.IO;
 namespace MizoreRainy.Pandora.ConfigUtility.Editor
 {
 	/// <summary>
-	/// Evaluates assemblies at build time to discover any config entries and populates the cache
-	/// replacing the need for reflection at runtime.
+	/// Represents a build processor that evaluates assemblies at build time to discover any config entries
+	/// and populates the cache replacing the need for reflection at runtime.
 	/// </summary>
 	public class ConfigPrebuildProcessor : IPreprocessBuildWithReport
 	{
+		#region Internal & Interface Implementations
+
 		public int callbackOrder => 0;
 
 		public void OnPreprocessBuild(BuildReport report)
@@ -71,5 +73,7 @@ namespace MizoreRainy.Pandora.ConfigUtility.Editor
 
 			Debug.Log($"[Pandora Config] Generated config cache with {cache.ConfigTypes.Count} root types.");
 		}
+
+		#endregion
 	}
 }

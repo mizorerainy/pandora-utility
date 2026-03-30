@@ -187,9 +187,7 @@ namespace MizoreRainy.Pandora.NetworkUtility
 		{
 		}
 
-		#endregion
 
-		#region Network Statistics
 
 		[Serializable]
 		public struct NetworkStats
@@ -216,6 +214,10 @@ namespace MizoreRainy.Pandora.NetworkUtility
 				MalformedPackets = 0;
 			}
 		}
+
+		#endregion
+
+		#region Fields & Properties
 
 		private NetworkStats _Statistics;
 

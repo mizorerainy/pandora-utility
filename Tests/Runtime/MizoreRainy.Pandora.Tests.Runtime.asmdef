@@ -1,0 +1,24 @@
+{
+    "name": "MizoreRainy.Pandora.Tests.Runtime",
+    "rootNamespace": "MizoreRainy.Pandora.Tests.Runtime",
+    "references": [
+        "MizoreRainy.Pandora.Runtime",
+        "MizoreRainy.Pandora.Runtime.Config",
+        "MizoreRainy.Pandora.Runtime.Network.AetherLink",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

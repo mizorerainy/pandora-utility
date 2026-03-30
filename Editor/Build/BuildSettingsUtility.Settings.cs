@@ -19,17 +19,13 @@ namespace MizoreRainy.Pandora.BuildUtility
 {
 	public partial class BuildSettingsUtility
 	{
-		#region UI Rendering - Global Settings
+		#region Internal & Interface Implementations
 
-		/// <summary>
-		/// Renders the Global Settings section within the Unity Editor window.
-		/// </summary>
-		/// <remarks>
-		/// This method is responsible for displaying the user interface for configuring global build settings,
-		/// including settings for the bundle version and the output folder path. It ensures users can input
-		/// valid version numbers and select appropriate paths for build outputs, applying validation checks
-		/// where necessary.
-		/// </remarks>
+		// Renders the Global Settings section within the Unity Editor window.
+		// This method is responsible for displaying the user interface for configuring global build settings,
+		// including settings for the bundle version and the output folder path. It ensures users can input
+		// valid version numbers and select appropriate paths for build outputs, applying validation checks
+		// where necessary.
 		private void DrawGlobalSettingsSection()
 		{
 			GUILayout.Label("Global Settings", EditorStyles.boldLabel);

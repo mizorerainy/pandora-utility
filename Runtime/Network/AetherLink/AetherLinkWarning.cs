@@ -11,13 +11,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 	/// </summary>
 	public partial class AetherLink : MonoBehaviour
 	{
-		#region Utility Methods
+		#region Internal & Interface Implementations
 
-		/// <summary>
-		/// Logs a warning message indicating that the UniTask package is required for full functionality
-		/// of the AetherLink class. Provides guidance for installing the UniTask package or accessing
-		/// the Network Utility Setup window.
-		/// </summary>
+		// Logs a warning message indicating that the UniTask package is required for full functionality
+		// of the AetherLink class. Provides guidance for installing the UniTask package or accessing
+		// the Network Utility Setup window.
 		private void ShowUniTaskWarning()
 		{
 			PandoraLogger.LogNetworkWarning("UniTask package is required for full AetherLink functionality. " +
@@ -26,13 +24,11 @@ namespace MizoreRainy.Pandora.NetworkUtility
 
 		#endregion
 
-		#region Unity Lifecycle
+		#region Unity Lifecycle & Initialization
 
-		/// <summary>
-		/// Initializes the component when the script instance is being loaded.
-		/// This method will display a warning if the UniTask package is not installed,
-		/// indicating that the full functionality of AetherLink requires UniTask.
-		/// </summary>
+		// Initializes the component when the script instance is being loaded.
+		// This method will display a warning if the UniTask package is not installed,
+		// indicating that the full functionality of AetherLink requires UniTask.
 		private void Awake()
 		{
 			ShowUniTaskWarning();

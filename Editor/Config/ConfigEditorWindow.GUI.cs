@@ -26,13 +26,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 	/// </summary>
 	public partial class ConfigEditorWindow : EditorWindow
 	{
-		#region Unity Lifecycle
+		#region Unity Lifecycle & Initialization
 
-		/// <summary>
-		///     Handles the rendering and layout of the GUI for the configuration editor window.
-		///     Includes functionality for refreshing settings, navigating the configuration hierarchy,
-		///     and performing actions such as saving changes or resetting to defaults.
-		/// </summary>
+		// Handles the rendering and layout of the GUI for the configuration editor window.
 		private void OnGUI()
 		{
 			if (_RootNode == null)
@@ -127,7 +123,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 				if (hasChildren && node.IsFoldout)
 				{
-					foreach (var child in node.Children.Values.OrderBy(n => n.Name))
+					foreach (var child in node.Children.Values.OrderBy(n => n.Order).ThenBy(n => n.Name))
 					{
 						drawSidebarNodeRecursive(child, indentLevel + 1, fullPath);
 					}
@@ -149,7 +145,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			EditorGUILayout.EndHorizontal();
 			GUI.backgroundColor = oldBgAll;
 
-			foreach (var grp in _RootNode.Children.Values.OrderBy(n => n.Name))
+			foreach (var grp in _RootNode.Children.Values.OrderBy(n => n.Order).ThenBy(n => n.Name))
 			{
 				drawSidebarNodeRecursive(grp, 0, "");
 			}
@@ -200,7 +196,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			_IsAnyFieldInvalid = false; // Reset before redraw
 			_GroupRenderIndex = 0;
 
-			foreach (var node in _RootNode.Children.Values.OrderBy(_n => _n.Name))
+			foreach (var node in _RootNode.Children.Values.OrderBy(_n => _n.Order).ThenBy(_n => _n.Name))
 			{
 				if (string.IsNullOrEmpty(_SearchQuery) || node.MatchesSearch(_SearchQuery, _SearchScope))
 				{
@@ -218,16 +214,9 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 		#endregion
 
 
-		#region UI Rendering
+		#region Internal & Interface Implementations
 
-		/// <summary>
-		///     Renders a user interface for an individual configuration entry,
-		///     allowing the user to view and modify its value.
-		/// </summary>
-		/// <param name="_setting">
-		///     The display settings containing the configuration entry and related metadata,
-		///     including current value, validation state, and error message.
-		/// </param>
+		// Renders a user interface for an individual configuration entry.
 		private void DrawSetting(DisplaySetting _setting)
 		{
 			var entry = _setting.Entry;
@@ -341,12 +330,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 
 
-		/// <summary>
-		///     Recursively draws a hierarchical configuration node,
-		///     including its settings and child nodes, in the Unity editor window.
-		/// </summary>
-		/// <param name="_node">The configuration node to be drawn, including its settings and child nodes.</param>
-		/// <param name="_searchQuery">The search query to filter settings and nodes.</param>
+		// Recursively draws a hierarchical configuration node including its settings and child nodes.
 		private void DrawNode(ConfigNode _node, string _searchQuery = "", SearchScope _searchScope = SearchScope.Both, string currentPath = "")
 		{
 			string fullPath = string.IsNullOrEmpty(currentPath) ? _node.Name : currentPath + "." + _node.Name;
@@ -395,7 +379,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			EditorGUILayout.Space(10);
 
 			// Draw settings at this level
-			foreach (var setting in _node.Settings.OrderBy(_s => _s.Entry.Key))
+			foreach (var setting in _node.Settings.OrderBy(_s => _s.Entry.Order))
 			{
 				bool settingMatches = !isSearching || nodeMatches;
 
@@ -424,7 +408,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 			}
 
 			// Recursively draw child nodes
-			foreach (var childNode in _node.Children.Values.OrderBy(_n => _n.Name))
+			foreach (var childNode in _node.Children.Values.OrderBy(_n => _n.Order).ThenBy(_n => _n.Name))
 			{
 				if (!isSearching || nodeMatches || childNode.MatchesSearch(_searchQuery, _searchScope))
 				{
@@ -436,18 +420,7 @@ namespace MizoreRainy.Pandora.Editor.ConfigUtility.Editor
 
 			EditorGUILayout.EndVertical();
 		}
-
-		///     Draws the corresponding input field in the Editor GUI for the given configuration setting,
-		///     based on its data type, and optionally validates the input value.
-		/// </summary>
-		/// <param name="_setting">
-		///     The display setting
-		///     containing the configuration entry and its associated state.
-		/// </param>
-		/// <param name="_label">
-		///     The label to display for the field,
-		///     including the key and description of the configuration entry.
-		/// </param>
+		// Draws the corresponding input field in the Editor GUI for the given configuration setting.
 		private void DrawFieldForType(DisplaySetting _setting, GUIContent _label)
 		{
 			var entry = _setting.Entry;

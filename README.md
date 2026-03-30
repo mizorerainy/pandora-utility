@@ -17,10 +17,21 @@ Alternatively, you can specify a version tag (e.g., `#v1.0.0`) at the end of the
 ### Configuration System
 ```csharp
 // Define settings
+// Use ConfigGroup to organize and prioritize the rendering/serialization order of entire groups
+[ConfigGroup(order: 0)]
 public static class GameSettings
 {
-    [Config("PlayerName", "Anonymous", "The player's display name")]
+    // Standard setup with description and order
+    [Config("PlayerName", "Anonymous", "The player's display name", _order: 1)]
     public static readonly ConfigEntry<string> PlayerName;
+
+    // Use named arguments to skip description and focus purely on setting the order
+    [Config("AutoSave", true, _order: 2)]
+    public static readonly ConfigEntry<bool> AutoSave;
+
+    // Define only custom Editor UI background color and skip description/order
+    [Config("DebugMode", false, _backgroundColorHex: "#FF0000")]
+    public static readonly ConfigEntry<bool> DebugMode;
 }
 
 // Initialize (required by default)
@@ -50,7 +61,7 @@ await foreach(var packet in AetherLink.Instance.OnDataReceived())
 
 ## Features Overview
 
-- **🔧 Configuration System**: Dual Format Support (INI/YAML), Automatic Discovery, Live Reloading, Type Safety, Custom Parsers.
+- **🔧 Configuration System**: Dual Format Support (INI/YAML), Automatic Discovery, Live Reloading, Zero-Config Optimization, Type Safety, Custom Parsers.
 - **🏗️ Build Utility**: Automated Build Pipeline, Platform Management, Build Configurations, Post-Build Actions.
 - **🌐 Network Features (AetherLink)**: Cross-Platform Networking (UDP/TCP), Master-Slave Architecture, Real-time Communication, Auto-Discovery, Serialization System.
 

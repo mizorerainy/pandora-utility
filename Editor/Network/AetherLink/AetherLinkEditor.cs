@@ -30,7 +30,7 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 	[CustomEditor(typeof(AetherLink))]
 	public partial class AetherLinkEditor : UnityEditor.Editor
 	{
-		#region Private Members
+		#region Fields & Properties
 
 		private SerializedProperty _SettingsProp;
 		private SerializedProperty _IsConfiguredProp;
@@ -60,7 +60,7 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 
 		#endregion
 
-		#region Unity Editor Methods
+		#region Unity Lifecycle & Initialization
 
 		private void OnEnable()
 		{
@@ -92,9 +92,7 @@ namespace MizoreRainy.Pandora.NetworkUtility.Editor
 			}
 		}
 
-		/// <summary>
-		/// Draws the custom Inspector GUI.
-		/// </summary>
+		// Draws the custom Inspector GUI.
 		public override void OnInspectorGUI()
 		{
 			serializedObject.Update();

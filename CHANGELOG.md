@@ -5,6 +5,16 @@ All notable changes to the Pandora Network Utility Package will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-30
+
+### Optimized
+
+#### Configuration System
+- Optimized Config System performance by bypassing initialization and `FileSystemWatcher` thread creation entirely when zero configuration settings exist.
+- Introduced `PANDORA_DISABLE_CONFIG_WATCHER` Script Define Symbol to easily disable background file monitoring for production release performance.
+- Introduced `CONFIG_ALLOW_REFLECTION` to defensively block slow runtime Assembly parsing when missing `PandoraConfigCache.asset`.
+- Expanded the Pandora Settings Window (UI) with dedicated toggles to safely control these optimizations.
+
 ## [1.1.0] - 2026-03-27
 
 ### Added

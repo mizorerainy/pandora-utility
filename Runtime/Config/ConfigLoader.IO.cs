@@ -35,13 +35,10 @@ namespace MizoreRainy.Pandora.ConfigUtility
 	{
 		#region Public API
 
-		/// <summary>
-		///     Synchronously loads configuration settings from a file located on the disk.
-		///     If the configuration file is not found, a new file is automatically created containing the default settings.
-		///     Invalid or missing entries in the configuration file are replaced with default values
-		///     to maintain data integrity.
-		///     Ensures consistency by saving the updated configuration back to the file after loading.
-		/// </summary>
+		// Synchronously loads configuration settings from a file located on the disk.
+		// If the configuration file is not found, a new file is automatically created containing the default settings.
+		// Invalid or missing entries in the configuration file are replaced with default values.
+		// Ensures consistency by saving the updated configuration back to the file after loading.
 		private static void LoadFromFileSync()
 		{
 			var path = GetConfigPath();
@@ -61,7 +58,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		}
 
 		/// <summary>
-		///     Asynchronously loads application settings from the configuration file.
+		///     Loads application settings from the configuration file asynchronously.
 		///     If the file does not exist, a new configuration file is created with default values.
 		///     Missing or invalid entries in the configuration are automatically replaced with defaults,
 		///     ensuring the integrity and consistency of the loaded settings.
@@ -88,12 +85,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			await SaveAsync(); // Self-heal
 		}
 
-		/// <summary>
-		///     Synchronously saves all configuration settings to the designated file.
-		///     Temporarily halts the file watcher to prevent triggering loops during the save process.
-		///     Use the active configuration format (e.g., INI or YAML) for saving.
-		///     Ensures the file watcher is properly resumed after the operation concludes.
-		/// </summary>
+		// Synchronously saves all configuration settings to the designated file.
+		// Temporarily halts the file watcher to prevent triggering loops during the save process.
 		private static void SaveSync()
 		{
 			StopWatching(); // Pause watcher to prevent infinite loop
@@ -178,7 +171,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		public static void StartWatching()
 		{
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if !PANDORA_DISABLE_CONFIG_WATCHER && (UNITY_EDITOR || UNITY_STANDALONE)
 			if (_Watcher != null) return;
 
 			try
@@ -211,7 +204,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		/// </summary>
 		public static void StopWatching()
 		{
-#if UNITY_EDITOR || UNITY_STANDALONE
+#if !PANDORA_DISABLE_CONFIG_WATCHER && (UNITY_EDITOR || UNITY_STANDALONE)
 			if (_Watcher == null) return;
 
 			_Watcher.EnableRaisingEvents = false;
@@ -223,13 +216,8 @@ namespace MizoreRainy.Pandora.ConfigUtility
 #endif
 		}
 
-		/// <summary>
-		///     Handles the event triggered when the configuration file is changed.
-		///     Ensures the updated configuration file is processed, reloading settings
-		///     to maintain consistency with the new file state.
-		/// </summary>
-		/// <param name="_sender">The source of the event, typically an instance of FileSystemWatcher.</param>
-		/// <param name="_e">The event arguments containing details about the file change.</param>
+		// Handles the event triggered when the configuration file is changed.
+		// Ensures the updated configuration file is processed, reloading settings to maintain consistency.
 		[SuppressMessage("ReSharper", "AsyncVoidLambda")]
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 		private static async void OnConfigFileChanged(object _sender, FileSystemEventArgs _e)
