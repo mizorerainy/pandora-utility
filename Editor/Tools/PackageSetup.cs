@@ -37,50 +37,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     The key is named "Pandora.ConfigLoader.AutoInitEnabled"
 		///     and is used internally to save and retrieve the auto-initialization state.
 		/// </value>
-		private const string _CONFIG_AUTO_INIT_KEY = "Pandora.ConfigLoader.AutoInitEnabled";
-
-		/// <summary>
-		///     Represents the state of the auto-initialization feature for the ConfigLoader.
-		///     Determines whether the ConfigLoader will automatically initialize before the first scene loads.
-		/// </summary>
-		/// <remarks>
-		///     By default,
-		///     this value is initialized from the Editor Preferences using the key "Pandora.ConfigLoader.AutoInitEnabled".
-		///     Enabling this feature is recommended for most projects,
-		///     as it ensures that the ConfigLoader is ready when the application starts.
-		///     Disabling it provides more control over the initialization process,
-		///     requiring manual initialization via ConfigLoader.InitializeAsync().
-		/// </remarks>
-		private bool _ConfigLoaderAutoInit;
-
-		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
-		private bool _ConfigLoaderAsyncInit;
-
-		private const string _CONFIG_DISABLE_WATCHER_KEY = "Pandora.ConfigLoader.DisableWatcherEnabled";
-		private bool _DisableConfigWatcher;
-
-		private const string _CONFIG_ALLOW_REFLECTION_KEY = "Pandora.ConfigLoader.AllowReflection";
-		private bool _AllowRuntimeReflection;
-
-		/// <summary>
-		///     Represents the editor preference key used to store and retrieve
-		///     whether the YAML format is enabled for configuration files in the Pandora package.
-		///     When enabled, the ConfigLoader uses "config.yaml" instead of "config.ini".
-		///     Requires the installation of the VYaml package for proper functionality.
-		/// </summary>
-		private const string _CONFIG_USE_YAML_KEY = "Pandora.ConfigLoader.UseYaml";
-
-		/// <summary>
-		///     Indicates whether YAML format (.yaml) is enabled for the Pandora ConfigLoader.
-		///     When set to true, the ConfigLoader uses "config.yaml" as the configuration file format.
-		///     This requires the VYaml package to be installed.
-		/// </summary>
-		private bool _UseYaml;
-
-		/// <summary>
-		///     Indicates whether the VYaml package is installed in the project.
-		///     Used to determine if YAML configuration format support is available.
-		/// </summary>
+		private PandoraSettings _settings;
 		private bool _IsYamlInstalled;
 		private bool _IsUniTaskInstalled;
 
@@ -96,12 +53,7 @@ namespace MizoreRainy.Pandora.Editor.Tools
 
 		private void OnEnable()
 		{
-			// Load saved settings
-			_ConfigLoaderAutoInit = EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false);
-			_ConfigLoaderAsyncInit = EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false);
-			_DisableConfigWatcher = EditorPrefs.GetBool(_CONFIG_DISABLE_WATCHER_KEY, false);
-			_AllowRuntimeReflection = EditorPrefs.GetBool(_CONFIG_ALLOW_REFLECTION_KEY, false);
-			_UseYaml = EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false);
+			_settings = PandoraSettings.GetOrCreateSettings();
 
 			CheckYamlPackageStateAsync();
 			CheckUniTaskPackageStateAsync();
@@ -158,15 +110,15 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			EditorGUILayout.Space(5);
 
 			EditorGUI.BeginChangeCheck();
-			_ConfigLoaderAutoInit = EditorGUILayout.Toggle(
+			_settings.ConfigLoaderAutoInit = EditorGUILayout.Toggle(
 				new GUIContent("Enable Auto-Initialization",
 					"If enabled, the ConfigLoader will initialize automatically before the first scene loads. If disabled, you must call ConfigLoader.InitializeAsync() manually."),
-				_ConfigLoaderAutoInit);
+				_settings.ConfigLoaderAutoInit);
 			if (EditorGUI.EndChangeCheck())
 			{
-				EditorPrefs.SetBool(_CONFIG_AUTO_INIT_KEY, _ConfigLoaderAutoInit);
+				_settings.Save();
 				PackageSetup.UpdateScriptingDefines();
-				Debug.Log($"Config Loader Auto-Initialization set to: {_ConfigLoaderAutoInit}");
+				Debug.Log($"Config Loader Auto-Initialization set to: {_settings.ConfigLoaderAutoInit}");
 				AssetDatabase.Refresh();
 			}
 
@@ -174,17 +126,17 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				"Auto-Initialization is recommended for most projects. Disable this only if you need full control over the startup sequence.",
 				MessageType.Info);
 
-			EditorGUI.BeginDisabledGroup(!_ConfigLoaderAutoInit);
+			EditorGUI.BeginDisabledGroup(!_settings.ConfigLoaderAutoInit);
 			EditorGUI.BeginChangeCheck();
-			_ConfigLoaderAsyncInit = EditorGUILayout.Toggle(
+			_settings.ConfigLoaderAsyncInit = EditorGUILayout.Toggle(
 				new GUIContent("Enable Async Initialization",
 					"If enabled, the ConfigLoader will initialize asynchronously. Faster startup, but values may not be immediately available."),
-				_ConfigLoaderAsyncInit);
+				_settings.ConfigLoaderAsyncInit);
 			if (EditorGUI.EndChangeCheck())
 			{
-				EditorPrefs.SetBool(_CONFIG_ASYNC_INIT_KEY, _ConfigLoaderAsyncInit);
+				_settings.Save();
 				PackageSetup.UpdateScriptingDefines();
-				Debug.Log($"Config Loader Async-Initialization set to: {_ConfigLoaderAsyncInit}");
+				Debug.Log($"Config Loader Async-Initialization set to: {_settings.ConfigLoaderAsyncInit}");
 				AssetDatabase.Refresh();
 			}
 			EditorGUI.EndDisabledGroup();
@@ -192,28 +144,28 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			EditorGUILayout.Space(5);
 
 			EditorGUI.BeginChangeCheck();
-			_DisableConfigWatcher = EditorGUILayout.Toggle(
+			_settings.DisableConfigWatcher = EditorGUILayout.Toggle(
 				new GUIContent("Disable Config Watcher",
 					"If enabled, the ConfigLoader will not create a FileSystemWatcher. Useful to save performance if no runtime config editing is needed."),
-				_DisableConfigWatcher);
+				_settings.DisableConfigWatcher);
 			if (EditorGUI.EndChangeCheck())
 			{
-				EditorPrefs.SetBool(_CONFIG_DISABLE_WATCHER_KEY, _DisableConfigWatcher);
+				_settings.Save();
 				PackageSetup.UpdateScriptingDefines();
-				Debug.Log($"Disable Config Watcher set to: {_DisableConfigWatcher}");
+				Debug.Log($"Disable Config Watcher set to: {_settings.DisableConfigWatcher}");
 				AssetDatabase.Refresh();
 			}
 
 			EditorGUI.BeginChangeCheck();
-			_AllowRuntimeReflection = EditorGUILayout.Toggle(
+			_settings.AllowRuntimeReflection = EditorGUILayout.Toggle(
 				new GUIContent("Allow Runtime Reflection (Slow)",
 					"If enabled, ConfigLoader will use reflection to discover configs if the Cache is missing at runtime. Otherwise, it will skip discovery."),
-				_AllowRuntimeReflection);
+				_settings.AllowRuntimeReflection);
 			if (EditorGUI.EndChangeCheck())
 			{
-				EditorPrefs.SetBool(_CONFIG_ALLOW_REFLECTION_KEY, _AllowRuntimeReflection);
+				_settings.Save();
 				PackageSetup.UpdateScriptingDefines();
-				Debug.Log($"Allow Runtime Reflection set to: {_AllowRuntimeReflection}");
+				Debug.Log($"Allow Runtime Reflection set to: {_settings.AllowRuntimeReflection}");
 				AssetDatabase.Refresh();
 			}
 			
@@ -241,15 +193,15 @@ namespace MizoreRainy.Pandora.Editor.Tools
 
 			EditorGUI.BeginDisabledGroup(!_IsYamlInstalled);
 			EditorGUI.BeginChangeCheck();
-			_UseYaml = EditorGUILayout.Toggle(
+			_settings.UseYaml = EditorGUILayout.Toggle(
 				new GUIContent("Use YAML Format (.yaml)",
 					"If enabled, the ConfigLoader will use 'config.yaml' instead of 'config.ini'. This requires the VYaml package."),
-				_UseYaml);
+				_settings.UseYaml);
 			if (EditorGUI.EndChangeCheck())
 			{
-				EditorPrefs.SetBool(_CONFIG_USE_YAML_KEY, _UseYaml);
+				_settings.Save();
 				PackageSetup.UpdateScriptingDefines();
-				Debug.Log($"Use YAML Format set to: {_UseYaml}");
+				Debug.Log($"Use YAML Format set to: {_settings.UseYaml}");
 				AssetDatabase.Refresh();
 			}
 
@@ -335,14 +287,6 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			"https://github.com/hadashiA/VYaml.git?path=VYaml.Unity/Assets/VYaml#0.27.1";
 
 		/// <summary>
-		///     A constant string key used for enabling or disabling the automated initialization
-		///     of the Pandora configuration loader system in the Unity Editor.
-		///     The configuration associated with this key is stored
-		///     and managed via <see cref="UnityEditor.EditorPrefs" />.
-		/// </summary>
-		private const string _CONFIG_AUTO_INIT_KEY = "Pandora.ConfigLoader.AutoInitEnabled";
-
-		/// <summary>
 		///     A constant string representing the scripting defines the symbol for enabling automatic initialization
 		///     of the Config Loader in the Pandora package.
 		/// </summary>
@@ -354,28 +298,11 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		/// </remarks>
 		private const string _CONFIG_LOADER_AUTO_INIT_SYMBOL = "CONFIG_LOADER_AUTO_INIT";
 
-		private const string _CONFIG_ASYNC_INIT_KEY = "Pandora.ConfigLoader.AsyncInitEnabled";
 		private const string _CONFIG_LOADER_ASYNC_SYMBOL = "CONFIG_LOAD_ASYNC";
 
-		private const string _CONFIG_DISABLE_WATCHER_KEY = "Pandora.ConfigLoader.DisableWatcherEnabled";
 		private const string _CONFIG_DISABLE_WATCHER_SYMBOL = "PANDORA_DISABLE_CONFIG_WATCHER";
 
-		private const string _CONFIG_ALLOW_REFLECTION_KEY = "Pandora.ConfigLoader.AllowReflection";
 		private const string _CONFIG_ALLOW_REFLECTION_SYMBOL = "CONFIG_ALLOW_REFLECTION";
-
-		/// <summary>
-		///     Specifies the EditorPrefs key used to determine whether YAML-based configuration loading
-		///     is enabled in the Pandora ConfigLoader system.
-		/// </summary>
-		/// <remarks>
-		///     This key is used in conjunction with the scripting define symbol "USE_YAML_CONFIG" to enable
-		///     or disable YAML support dynamically during development.
-		///     The value of this key is a boolean,
-		///     stored in Unity's Editor Preferences,
-		///     representing the state of YAML configuration usage.
-		///     Changing this key effects how the Pandora package processes configuration settings.
-		/// </remarks>
-		private const string _CONFIG_USE_YAML_KEY = "Pandora.ConfigLoader.UseYaml";
 
 		/// <summary>
 		///     A constant that represents the scripting defines the symbol for enabling YAML configuration
@@ -391,14 +318,6 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		///     conditional compilation for features dependent on YAML functionality.
 		/// </remarks>
 		private const string _CONFIG_USE_YAML_SYMBOL = "USE_YAML_CONFIG";
-
-		/// <summary>
-		///     A constant string key used to track whether the package setup process
-		///     for the Pandora Network Utility has been completed successfully.
-		///     This key is used with Unity's `EditorPrefs` to store a boolean
-		///     flag indicating the setup status and prevent redundant setup operations.
-		/// </summary>
-		private const string _SETUP_COMPLETE_KEY = "PandoraUtility.SetupComplete";
 
 		/// <summary>
 		///     This class is responsible for managing and automating setup tasks for the Pandora package in Unity.
@@ -422,7 +341,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			UpdateScriptingDefines();
 
 			// Pre-check to avoid hitting the UPM completely if setup is fully completed.
-			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false) && EditorPrefs.GetBool(_SETUP_COMPLETE_KEY + "_shown", false))
+			var settings = PandoraSettings.GetOrCreateSettings();
+			if (settings.SetupComplete && settings.SetupCompleteShown)
 			{
 				return;
 			}
@@ -437,7 +357,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		{
 			bool isInstalled = await IsPackageInstalledAsync(UNITASK_PACKAGE_ID);
 
-			if (EditorPrefs.GetBool(_SETUP_COMPLETE_KEY, false))
+			var settings = PandoraSettings.GetOrCreateSettings();
+			if (settings.SetupComplete)
 			{
 				if (isInstalled) ShowCompletionDialog();
 				return;
@@ -449,7 +370,8 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			}
 			else
 			{
-				EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, true);
+				settings.SetupComplete = true;
+				settings.Save();
 				ShowCompletionDialog();
 			}
 		}
@@ -487,17 +409,19 @@ namespace MizoreRainy.Pandora.Editor.Tools
 				new HashSet<string>(definesString.Split(';').Where(_s => !string.IsNullOrEmpty(_s)).ToList());
 			var definesChanged = false;
 
+			var settings = PandoraSettings.GetOrCreateSettings();
+
 			// FIX: Removed manual handling for package defines, as versionDefines in .asmdef is the correct approach.
 			definesChanged |= SetDefine(ref definesList, _CONFIG_LOADER_AUTO_INIT_SYMBOL,
-				EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false));
+				settings.ConfigLoaderAutoInit);
 			definesChanged |= SetDefine(ref definesList, _CONFIG_LOADER_ASYNC_SYMBOL,
-				EditorPrefs.GetBool(_CONFIG_AUTO_INIT_KEY, false) && EditorPrefs.GetBool(_CONFIG_ASYNC_INIT_KEY, false));
+				settings.ConfigLoaderAutoInit && settings.ConfigLoaderAsyncInit);
 			definesChanged |= SetDefine(ref definesList, _CONFIG_USE_YAML_SYMBOL,
-				EditorPrefs.GetBool(_CONFIG_USE_YAML_KEY, false));
+				settings.UseYaml);
 			definesChanged |= SetDefine(ref definesList, _CONFIG_DISABLE_WATCHER_SYMBOL,
-				EditorPrefs.GetBool(_CONFIG_DISABLE_WATCHER_KEY, false));
+				settings.DisableConfigWatcher);
 			definesChanged |= SetDefine(ref definesList, _CONFIG_ALLOW_REFLECTION_SYMBOL,
-				EditorPrefs.GetBool(_CONFIG_ALLOW_REFLECTION_KEY, false));
+				settings.AllowRuntimeReflection);
 
 			if (definesChanged)
 			{
@@ -559,7 +483,11 @@ namespace MizoreRainy.Pandora.Editor.Tools
 			switch (result)
 			{
 				case 0: InstallPackageAsync(UNITASK_PACKAGE_ID, _UNITASK_GIT_URL).GetAwaiter(); break;
-				case 1: EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, true); break;
+				case 1: 
+					var settings = PandoraSettings.GetOrCreateSettings();
+					settings.SetupComplete = true; 
+					settings.Save();
+					break;
 			}
 		}
 
@@ -569,11 +497,13 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		/// </summary>
 		private static void ShowCompletionDialog()
 		{
-			if (!EditorPrefs.GetBool(_SETUP_COMPLETE_KEY + "_shown", false))
+			var settings = PandoraSettings.GetOrCreateSettings();
+			if (!settings.SetupCompleteShown)
 			{
 				EditorUtility.DisplayDialog("Setup Complete",
 					"Pandora Package Setup Complete!\n\nAll required dependencies are installed.", "OK");
-				EditorPrefs.SetBool(_SETUP_COMPLETE_KEY + "_shown", true);
+				settings.SetupCompleteShown = true;
+				settings.Save();
 			}
 		}
 
@@ -733,8 +663,10 @@ namespace MizoreRainy.Pandora.Editor.Tools
 		[MenuItem("Window/Pandora/Package Setup")]
 		public static void ShowSetupMenu()
 		{
-			EditorPrefs.SetBool(_SETUP_COMPLETE_KEY + "_shown", false);
-			EditorPrefs.SetBool(_SETUP_COMPLETE_KEY, false);
+			var settings = PandoraSettings.GetOrCreateSettings();
+			settings.SetupCompleteShown = false;
+			settings.SetupComplete = false;
+			settings.Save();
 			CheckSetup();
 		}
 
