@@ -5,6 +5,14 @@ All notable changes to the Pandora Network Utility Package will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-04-05
+
+### Changed
+
+#### Configuration System
+- Migrated `PandoraSettings` from a local `EditorPrefs` dependent methodology to a project-shared `ScriptableObject`. The settings are automatically generated at `Assets/Editor/Pandora/PandoraSettings.asset` to keep it external to the UPM package itself.
+- Optimized settings loading by utilizing a fast `EditorPrefs` path cache combined with `AssetDatabase.FindAssets` fallback scanning, keeping initialization lighting speed while resisting assets being moved.
+
 ## [1.2.0] - 2026-03-30
 
 ### Optimized

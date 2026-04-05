@@ -1,6 +1,6 @@
 {
   "name": "com.mizorerainy.pandora-utility",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "displayName": "Pandora Utility Manager",
   "description": "A comprehensive utility package for Unity projects, providing essential tools and extensions.",
   "unity": "2021.3",
