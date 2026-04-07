@@ -66,6 +66,7 @@ namespace MizoreRainy.Pandora.BuildUtility
             {
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
                 target = EditorUserBuildSettings.activeBuildTarget,
+                targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget),
                 options = BuildOptions.None
             };
 
@@ -117,7 +118,24 @@ namespace MizoreRainy.Pandora.BuildUtility
 
             PandoraLogger.LogBuild($"Starting CLI build for '{profile.Name}'. Output Path: {finalPath}");
 
+            bool isBuilding = true;
+            System.Threading.Thread progressThread = new System.Threading.Thread(() =>
+            {
+                System.Console.Write("[PandoraBuilder] Compiling ");
+                while (isBuilding)
+                {
+                    System.Console.Write(".");
+                    System.Threading.Thread.Sleep(5000);
+                }
+                System.Console.WriteLine();
+            });
+            progressThread.Start();
+
             var report = BuildPipeline.BuildPlayer(buildOptions);
+
+            isBuilding = false;
+            progressThread.Join();
+
             if (report.summary.result == BuildResult.Succeeded)
             {
                 PandoraLogger.LogBuild($"Build SUCCEEDED: {report.summary.outputPath} ({report.summary.totalSize / 1024 / 1024} MB)");
