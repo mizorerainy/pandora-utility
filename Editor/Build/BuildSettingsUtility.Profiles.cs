@@ -620,6 +620,19 @@ namespace MizoreRainy.Pandora.BuildUtility
 		private void LoadOrCreateSettings()
 		{
 			_BuildSettingsData = AssetDatabase.LoadAssetAtPath<BuildSettingsData>(_SETTING_FILE_PATH);
+			if (_BuildSettingsData == null)
+			{
+				var guids = AssetDatabase.FindAssets("t:BuildSettingsData");
+				if (guids.Length > 0)
+				{
+					var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+					if (guids.Length > 1)
+					{
+						PandoraLogger.LogBuildWarning($"Multiple BuildSettingsData assets found! Defaulting to the one located at: {path}");
+					}
+					_BuildSettingsData = AssetDatabase.LoadAssetAtPath<BuildSettingsData>(path);
+				}
+			}
 		}
 
 		// Creates a new ManagedBuildSettings asset file in a specified path
