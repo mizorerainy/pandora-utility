@@ -62,13 +62,13 @@ namespace MizoreRainy.Pandora.BuildUtility
             }
 
             // Prepare Build Options
-            var buildOptions = new BuildPlayerOptions
+            var buildOptions = new BuildPlayerWithProfileOptions
             {
-                scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
-                target = EditorUserBuildSettings.activeBuildTarget,
-                targetGroup = BuildPipeline.GetBuildTargetGroup(EditorUserBuildSettings.activeBuildTarget),
+                buildProfile = profile.TargetProfile,
                 options = BuildOptions.None
             };
+            
+            var activeTarget = EditorUserBuildSettings.activeBuildTarget;
 
             if (EditorUserBuildSettings.development) buildOptions.options |= BuildOptions.Development;
             if (EditorUserBuildSettings.allowDebugging) buildOptions.options |= BuildOptions.AllowDebugging;
@@ -82,35 +82,35 @@ namespace MizoreRainy.Pandora.BuildUtility
                 Directory.CreateDirectory(outputDirectoryOverride);
                 finalPath = outputDirectoryOverride;
                 // Add extension if it's standalone, etc. We just use the override folder for iOS and Android
-                if (buildOptions.target == BuildTarget.StandaloneWindows || buildOptions.target == BuildTarget.StandaloneWindows64)
+                if (activeTarget == BuildTarget.StandaloneWindows || activeTarget == BuildTarget.StandaloneWindows64)
                     finalPath = Path.Combine(outputDirectoryOverride, productName + ".exe");
-                else if (buildOptions.target == BuildTarget.StandaloneOSX)
+                else if (activeTarget == BuildTarget.StandaloneOSX)
                     finalPath = Path.Combine(outputDirectoryOverride, productName + ".app");
-                else if (buildOptions.target == BuildTarget.Android)
+                else if (activeTarget == BuildTarget.Android)
                     finalPath = Path.Combine(outputDirectoryOverride, productName + ".apk");
             }
             else
             {
                 // Core ConstructBuildPath logic replicated
                 var rootPath = settingsData.BuildFolderPath;
-                var platformFolder = GetPlatformFolder(buildOptions.target);
+                var platformFolder = GetPlatformFolder(activeTarget);
                 var versionString = PlayerSettings.bundleVersion.Replace('.', '-');
                 var timestamp = DateTime.Now.ToString("yyMMdd-HHmm");
                 var artifactName = $"{productName.ToLower()}-{profile.BuildSuffix}-v{versionString}-{timestamp}";
                 
                 var finalDir = Path.Combine(rootPath, platformFolder, profile.Name, artifactName);
 
-                if (buildOptions.target == BuildTarget.StandaloneWindows || buildOptions.target == BuildTarget.StandaloneWindows64 || buildOptions.target == BuildTarget.StandaloneOSX || buildOptions.target == BuildTarget.iOS)
+                if (activeTarget == BuildTarget.StandaloneWindows || activeTarget == BuildTarget.StandaloneWindows64 || activeTarget == BuildTarget.StandaloneOSX || activeTarget == BuildTarget.iOS)
                 {
                     Directory.CreateDirectory(finalDir);
-                    if (buildOptions.target == BuildTarget.iOS) finalPath = finalDir;
-                    else finalPath = Path.Combine(finalDir, productName + GetBuildExtension(buildOptions.target));
+                    if (activeTarget == BuildTarget.iOS) finalPath = finalDir;
+                    else finalPath = Path.Combine(finalDir, productName + GetBuildExtension(activeTarget));
                 }
                 else
                 {
                     var parentDir = Path.GetDirectoryName(finalDir);
                     if (parentDir != null) Directory.CreateDirectory(parentDir);
-                    finalPath = finalDir + GetBuildExtension(buildOptions.target);
+                    finalPath = finalDir + GetBuildExtension(activeTarget);
                 }
             }
             
