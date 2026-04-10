@@ -129,12 +129,19 @@ namespace MizoreRainy.Pandora.BuildUtility
                 }
                 System.Console.WriteLine();
             });
+            progressThread.IsBackground = true;
             progressThread.Start();
 
-            var report = BuildPipeline.BuildPlayer(buildOptions);
-
-            isBuilding = false;
-            progressThread.Join();
+            UnityEditor.Build.Reporting.BuildReport report;
+            try
+            {
+                report = BuildPipeline.BuildPlayer(buildOptions);
+            }
+            finally
+            {
+                isBuilding = false;
+                progressThread.Join();
+            }
 
             if (report.summary.result == BuildResult.Succeeded)
             {
