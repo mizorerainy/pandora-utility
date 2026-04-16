@@ -23,6 +23,7 @@ namespace MizoreRainy.Pandora.ConfigUtility.Editor
 			GenerateConfigCache();
 		}
 
+		[UnityEditor.Callbacks.DidReloadScripts]
 		[MenuItem("Pandora/Config/Generate Config Cache", priority = 130)]
 		public static void GenerateConfigCache()
 		{
@@ -64,6 +65,26 @@ namespace MizoreRainy.Pandora.ConfigUtility.Editor
 				cache = ScriptableObject.CreateInstance<ConfigTypeCacheSO>();
 				AssetDatabase.CreateAsset(cache, cachePath);
 			}
+
+			bool _hasChanges = false;
+			if (cache.ConfigTypes.Count != typeNames.Count)
+			{
+				_hasChanges = true;
+			}
+			else
+			{
+				foreach (var t in typeNames)
+				{
+					if (!cache.ConfigTypes.Contains(t))
+					{
+						_hasChanges = true;
+						break;
+					}
+				}
+			}
+
+			if (!_hasChanges)
+				return;
 
 			cache.ConfigTypes.Clear();
 			cache.ConfigTypes.AddRange(typeNames);

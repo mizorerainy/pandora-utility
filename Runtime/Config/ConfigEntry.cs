@@ -146,6 +146,24 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		#endregion
 
+		#region Operators
+
+		/// <summary>
+		///     Allows implicit conversion from the configuration entry to its underlying value type.
+		///     Safely handles uninitialized or null instances by logging a helpful error message.
+		/// </summary>
+		public static implicit operator T(ConfigEntry<T> _entry)
+		{
+			if (_entry == null)
+			{
+				Debug.LogError($"[Pandora Config] Attempted to access a null ConfigEntry<{typeof(T).Name}>! This usually indicates that the PandoraConfigCache is outdated. Try clicking 'Pandora -> Config -> Generate Config Cache' in the editor, or ensure ConfigLoader is initialized before accessing.");
+				return default;
+			}
+			return _entry.Value;
+		}
+
+		#endregion
+
 		#region Unity Lifecycle / Initialization
 
 		/// <summary>
