@@ -232,6 +232,16 @@ namespace MizoreRainy.Pandora.ConfigUtility
 			Value = _newValue;
 		}
 
+		/// <summary>
+		///     Sets a new value for the configuration entry in memory and immediately saves the configuration file synchronously.
+		/// </summary>
+		/// <param name="_newValue">The new value to be set and saved.</param>
+		public void SetValueAndSave(T _newValue)
+		{
+			SetValue(_newValue);
+			ConfigLoader.SaveSync();
+		}
+
 		#endregion
 
 		#region Internal & Interface Implementations

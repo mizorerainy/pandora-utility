@@ -5,9 +5,16 @@ All notable changes to the Pandora Network Utility Package will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.2] - 2026-04-07
+## [1.2.3] - 2026-05-18
 
 ### Added
+
+#### Configuration System
+- Added `public static void SaveSync()` to `ConfigLoader` for synchronous saving outside of async contexts.
+- Added `SetValueAndSave(T _newValue)` to `ConfigEntry<T>` allowing inline value assignments and immediate file saving.
+- Added a safety warning to avoid calling `SaveSync` during the `Update()` loop to prevent file system I/O throttling.
+
+## [1.2.2] - 2026-04-07
 
 #### Build Utilities
 - Added a `PandoraBuilder` class with a `public static bool BuildProfileByName` API enabling headless, programmatic build triggering without EditorWindow dependencies.

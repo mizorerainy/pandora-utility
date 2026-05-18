@@ -39,8 +39,11 @@ await ConfigLoader.InitializeAsync();
 
 // Use settings
 string name = GameSettings.PlayerName.Value;
-GameSettings.PlayerName.Value = "NewName"; // Auto-saves
+GameSettings.PlayerName.SetValueAndSave("NewName"); // Updates memory and immediately saves to file
 ```
+
+> [!WARNING]  
+> Avoid calling `ConfigLoader.SaveSync()` or `SetValueAndSave()` inside high-frequency loops like `Update()`. Because the configuration is backed by the file system, saving every frame will cause severe disk I/O bottlenecks and potential system throttling. Only save configuration when deliberate changes happen (e.g., UI OnValueChanged events, saving game state).
 
 ### AetherLink Networking
 ```csharp
