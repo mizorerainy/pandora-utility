@@ -39,7 +39,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 		// If the configuration file is not found, a new file is automatically created containing the default settings.
 		// Invalid or missing entries in the configuration file are replaced with default values.
 		// Ensures consistency by saving the updated configuration back to the file after loading.
-		private static void LoadFromFileSync()
+		public static void LoadFromFileSync()
 		{
 			var path = GetConfigPath();
 			if (!File.Exists(path))
@@ -87,7 +87,7 @@ namespace MizoreRainy.Pandora.ConfigUtility
 
 		// Synchronously saves all configuration settings to the designated file.
 		// Temporarily halts the file watcher to prevent triggering loops during the save process.
-		private static void SaveSync()
+		public static void SaveSync()
 		{
 			StopWatching(); // Pause watcher to prevent infinite loop
 			try
